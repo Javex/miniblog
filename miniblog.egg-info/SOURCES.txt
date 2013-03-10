@@ -27,5 +27,14 @@ miniblog/static/middlebg.png
 miniblog/static/pylons.css
 miniblog/static/pyramid-small.png
 miniblog/static/pyramid.png
+miniblog/static/style.css
 miniblog/static/transparent.gif
+miniblog/static/images/pic1.jpg
+miniblog/static/images/search.gif
+miniblog/templates/about.mako
+miniblog/templates/add.mako
+miniblog/templates/entry.mako
+miniblog/templates/home.mako
+miniblog/templates/index.html
 miniblog/templates/layout.mako
+miniblog/templates/search.mako
