@@ -1,0 +1,5 @@
+      [paste.app_factory]
+      main = miniblog:main
+      [console_scripts]
+      initialize_miniblog_db = miniblog.scripts.initializedb:main
+      
