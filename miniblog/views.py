@@ -7,9 +7,10 @@ from pyramid.security import remember, forget
 import requests
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.sql.expression import desc
+import transaction
 
-from miniblog.models import DBSession, Entry
-from miniblog.forms import EntryForm
+from miniblog.models import DBSession, Entry, Category
+from miniblog.forms import EntryForm, CategoryForm
 
 
 @view_config(route_name='home', renderer='home.mako')
@@ -24,8 +25,13 @@ def add_entry(request):
     form = EntryForm(request.POST)
     if request.method == 'POST':
         entry = Entry(form.data["title"], form.data["text"])
+        if "category" in form.data:
+            category = DBSession.query(Category)\
+                .filter(Category.name == form.data["category"]).one()
+            entry.category = category
         DBSession.add(entry)
-        return HTTPFound(location=request.route_url('home'))
+        DBSession.flush()
+        return HTTPFound(location=request.route_url('view_entry', id_=entry.id))
         # add the entry
     return {'form': form}
 
@@ -46,6 +52,18 @@ def about(request):
 def search(request):
     results = DBSession.query(Entry).filter(Entry.title.like('%%%s%%' % (request.GET['search']))).all()
     return {'results': results}
+
+@view_config(route_name='manage_categories', renderer='categories.mako',
+             permission='edit')
+def categories(request):
+    form = CategoryForm(request.POST)
+    if request.method == 'POST':
+        category = Category(form.data['name'])
+        DBSession.add(category)
+        return HTTPFound(location=request.route_url('home'))
+    return {'form': form}
+
+
 
 
 @view_config(route_name='login')

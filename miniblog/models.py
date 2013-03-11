@@ -1,7 +1,7 @@
 from datetime import datetime
 from sqlalchemy import Column, Integer, Text, DateTime
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import scoped_session, sessionmaker
+from sqlalchemy.orm import scoped_session, sessionmaker, relationship
 from sqlalchemy.schema import ForeignKey
 from pyramid.security import Allow, Everyone
 
@@ -24,7 +24,8 @@ class Entry(Base):
     title = Column(Text, unique=True, nullable=False)
     _text = Column('text', Text, nullable=False)
     entry_time = Column(DateTime, nullable=False)
-    category_id = Column(Integer, ForeignKey('category.name'))
+    category_name = Column(Text, ForeignKey('category.name'))
+    category = relationship('Category', backref='entries')
 
     def __init__(self, title, text, category_id=None):
         self.title = title
@@ -46,6 +47,9 @@ class Entry(Base):
 class Category(Base):
     __tablename__ = 'category'
     name = Column(Text, primary_key=True)
+
+    def __init__(self, name):
+        self.name = name
 
 
 class RootFactory(object):

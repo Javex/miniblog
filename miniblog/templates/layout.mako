@@ -82,14 +82,17 @@
 						<li class="first">
 							<a href="${request.route_url('home')}">Blog</a>
 						</li>
+						<li>
+							<a href="${request.route_url('about')}">About</a>
+						</li>
 						% if has_permission("edit", request.context, request):
 						<li>
 							<a href="${request.route_url('add_entry')}">Add Entry</a>
 						</li>
-						% endif
-						<li class="last">
-							<a href="${request.route_url('about')}">About</a>
+						<li>
+							<a href="${request.route_url('manage_categories')}">Manage Categories</a>
 						</li>
+						% endif
 					</ul>
 				</div>
 			</div>
