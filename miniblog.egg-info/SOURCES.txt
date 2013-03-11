@@ -1,6 +1,5 @@
 CHANGES.txt
 MANIFEST.in
-README.txt
 development.ini
 production.ini
 setup.cfg
@@ -23,6 +22,7 @@ miniblog/static/favicon.ico
 miniblog/static/footerbg.png
 miniblog/static/headerbg.png
 miniblog/static/ie6.css
+miniblog/static/jquery.js
 miniblog/static/middlebg.png
 miniblog/static/pylons.css
 miniblog/static/pyramid-small.png
@@ -30,6 +30,7 @@ miniblog/static/pyramid.png
 miniblog/static/style.css
 miniblog/static/transparent.gif
 miniblog/static/images/pic1.jpg
+miniblog/static/images/plain_sign_in_black.png
 miniblog/static/images/search.gif
 miniblog/templates/about.mako
 miniblog/templates/add.mako

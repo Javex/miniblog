@@ -6,3 +6,5 @@ pyramid_debugtoolbar
 zope.sqlalchemy
 waitress
 Markdown
+Requests
+MarkupSafe

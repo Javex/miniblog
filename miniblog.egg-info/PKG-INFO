@@ -6,21 +6,22 @@ Home-page: UNKNOWN
 Author: UNKNOWN
 Author-email: UNKNOWN
 License: UNKNOWN
-Description: miniblog README
-        ==================
+Description: miniblog
+        ========
         
-        Getting Started
-        ---------------
+        Introduction
+        ------------
         
-        - cd <directory containing this file>
+        miniblog is a small application that allows you to setup a really basic blog. 
+        It is kind of a "quick doesn't mean dirty"-idea (see [eevee on this](http://me.veekun.com/blog/2012/07/28/quick-doesnt-mean-dirty/)).
+        I wanted to build a blog software very quickly that only provides the most basic features:
         
-        - $venv/bin/python setup.py develop
-        
-        - $venv/bin/initialize_miniblog_db development.ini
-        
-        - $venv/bin/pserve development.ini
-        
-        
+         - Writing articles
+         - Comments
+         - Adding articles
+         - Some optional additional pages
+         
+        Note: This is currently a development build and not ready for release.
         
         0.0
         ---

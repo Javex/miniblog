@@ -1,4 +1,4 @@
-<% from pyramid.security import authenticated_userid, view_execution_permitted %>
+<% from pyramid.security import authenticated_userid, has_permission %>
 <% from miniblog.models import RootFactory %>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
@@ -82,7 +82,7 @@
 						<li class="first">
 							<a href="${request.route_url('home')}">Blog</a>
 						</li>
-						% if view_execution_permitted(request.context, request, 'add_entry'):
+						% if has_permission("edit", request.context, request):
 						<li>
 							<a href="${request.route_url('add_entry')}">Add Entry</a>
 						</li>

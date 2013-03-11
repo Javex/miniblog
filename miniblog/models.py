@@ -35,8 +35,8 @@ class Entry(Base):
     @property
     def text(self):
         import markdown
-        # Todo: escape with MarkupSafe
-        return markdown.markdown(self._text)
+        from markupsafe import escape
+        return markdown.markdown(escape(self._text))
 
     @text.setter
     def text(self, text):
