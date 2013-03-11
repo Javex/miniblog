@@ -19,24 +19,24 @@
 		<meta name="description" content="" />
 		<meta http-equiv="content-type" content="text/html; charset=utf-8" />
 		<meta http-equiv="X-UA-Compatible" content="IE=Edge">
-		<title>Temporary Issue by FCT</title>
+		<title>${view.request.registry.settings["title"]}</title>
 		<link href="http://fonts.googleapis.com/css?family=Arvo" rel="stylesheet" type="text/css" />
 		<link href="http://fonts.googleapis.com/css?family=Bitter" rel="stylesheet" type="text/css" />
 		<link rel="stylesheet" type="text/css" href="/static/style.css" />
 		<script src="https://login.persona.org/include.js"></script>
-		<script src="${request.static_url('miniblog:static/jquery.js')}"></script>
+		<script src="${view.request.static_url('miniblog:static/jquery.js')}"></script>
 		<script type="text/javascript">jQuery.noConflict();</script>
 		<script type="text/javascript">
 		jQuery(document).ready(function() {
 			jQuery("#signin").click(function() { navigator.id.request(); return false;});
 	        jQuery("#signout").click(function() { navigator.id.logout(); return false;});
             
-            var currentUser = ${'"%s"' % authenticated_userid(request) if authenticated_userid(request) else 'null'|n};
+            var currentUser = ${'"%s"' % authenticated_userid(view.request) if authenticated_userid(view.request) else 'null'|n};
             
             navigator.id.watch({
                 loggedInUser: currentUser,
                 onlogin: function(assertion) {
-                    jQuery.post("${request.route_url('login')}", 
+                    jQuery.post("${view.request.route_url('login')}", 
                         {assertion: assertion},
                         function(res, status, xhr) { window.location.reload(); }
                     )
@@ -50,7 +50,7 @@
                 
                 onlogout: function() {
                     jQuery.post(
-                        "${request.route_url('logout')}",
+                        "${view.request.route_url('logout')}",
                         function(res, status, xhr) { window.location.reload(); }
                     )
                     .fail(
@@ -67,11 +67,11 @@
 			<div id="header">
 				<div id="logo">
 					<h1>
-						<a href="#">Javex' Blog</a>
+						<a href="${view.request.route_url('home')}">${view.request.registry.settings["title"]}</a>
 					</h1>
 				</div>
 				<div id="search">
-					<form action="${request.route_url('search')}" method="get">
+					<form action="${view.request.route_url('search')}" method="get">
 						<fieldset>
 							<input class="text" name="search" size="40" maxlength="128" />
 						</fieldset>
@@ -80,17 +80,17 @@
 				<div id="nav">
 					<ul>
 						<li class="first">
-							<a href="${request.route_url('home')}">Blog</a>
+							<a href="${view.request.route_url('home')}">Blog</a>
 						</li>
 						<li>
-							<a href="${request.route_url('about')}">About</a>
+							<a href="${view.request.route_url('about')}">About</a>
 						</li>
-						% if has_permission("edit", request.context, request):
+						% if has_permission("edit", view.request.context, view.request):
 						<li>
-							<a href="${request.route_url('add_entry')}">Add Entry</a>
+							<a href="${view.request.route_url('add_entry')}">Add Entry</a>
 						</li>
 						<li>
-							<a href="${request.route_url('manage_categories')}">Manage Categories</a>
+							<a href="${view.request.route_url('manage_categories')}">Manage Categories</a>
 						</li>
 						% endif
 					</ul>
@@ -157,12 +157,30 @@
 				</div>
 				<div id="sidebar2">
 					<h3>
-				    % if not authenticated_userid(request):
+				    % if not authenticated_userid(view.request):
 						<a id="signin" href="">Login</a>
 					% else:
 					    <a id="signout" href="">Logout</a>
 				    % endif
 					</h3>
+					<h3>
+						Categories
+					</h3>
+					<ul>
+					% for index, category in enumerate(view.categories, 1):
+						<li class="
+						% if index == 1:
+						first
+						% elif index == len(view.categories):
+						last
+						% endif
+						">
+							<a href="${view.request.route_url('view_categories', id_=category.name)}">
+								${category.name}
+							</a>
+						</li>
+					% endfor
+					</ul>
 				</div>
 				<div id="sidebar1">
 					<h3>
@@ -172,34 +190,24 @@
 						Sociis proin quisque id magna felis sed sapien. Primis vel varius nulla. Mollis sollicitudin.
 					</p>
 					<h3>
-						Sed fermentum
+						Recent posts
 					</h3>
 					<ul>
-						<li class="first">
-							<a href="#">Lacinia amet et curae sed pellentesque</a>
+					% for index, entry in enumerate(view.recent, 1):
+						<li class="
+						% if index == 1:
+						first
+						% elif index == len(view.recent):
+						last
+						% endif
+						">
+							<a href="${request.route_url('view_entry', id_=entry.id)}">
+								${entry.title}
+							</a>
 						</li>
-						<li>
-							<a href="#">Vitae a nisi rhoncus sociis veroeros</a>
-						</li>
-						<li>
-							<a href="#">Urna amet ornare?</a>
-						</li>
-						<li>
-							<a href="#">Aliquam lorem ipsum</a>
-						</li>
-						<li>
-							<a href="#">Ipsum pulvinar neque gravida aliquam</a>
-						</li>
-						<li>
-							<a href="#">Blandit purus lectus sed semper</a>
-						</li>
-						<li>
-							<a href="#">Lorem ipsum et dolor</a>
-						</li>
-						<li class="last">
-							<a href="#">Varius placerat amet consequat duis</a>
-						</li>
+					% endfor
 					</ul>
+					
 				</div>
 				<br class="clear" />
 			</div>
@@ -259,7 +267,7 @@
 			</div>
 		</div>
 		<div id="copyright">
-				&copy; Your Site Name | Design by <a href="http://www.freecsstemplates.org/">FCT</a>
+				&copy; ${view.request.registry.settings["title"]} | Design by <a href="http://www.freecsstemplates.org/">FCT</a> | Powered By <a href="https://github.com/Javex/miniblog">miniblog</a>
 		</div>
 	</body>
 </html>

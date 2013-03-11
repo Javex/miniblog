@@ -1,6 +1,6 @@
 <%inherit file="layout.mako" />
 <%def name="display_entry(entry)">
-	<h1><a href="${request.route_url('view_entry', id_=entry.id)}">${entry.title}</a></h1>
+	<h1><a href="${view.request.route_url('view_entry', id_=entry.id)}">${entry.title}</a></h1>
 	<span class="date">Posted on: ${entry.entry_time.strftime('%Y-%m-%d %H:%M:%S')}</span>
 	<p>${entry.text|n}</p>
 </%def>
@@ -10,7 +10,7 @@
     <div id="disqus_thread"></div>
     <script type="text/javascript">
         /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
-        var disqus_shortname = 'javex'; // required: replace example with your forum shortname
+        var disqus_shortname = '${view.request.registry.settings["disqus_shortname"]}'; // required: replace example with your forum shortname
 
         /* * * DON'T EDIT BELOW THIS LINE * * */
         (function() {
