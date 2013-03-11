@@ -1,3 +1,5 @@
+<% from pyramid.security import authenticated_userid, view_execution_permitted %>
+<% from miniblog.models import RootFactory %>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <!--
@@ -16,10 +18,49 @@
 		<meta name="keywords" content="" />
 		<meta name="description" content="" />
 		<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+		<meta http-equiv="X-UA-Compatible" content="IE=Edge">
 		<title>Temporary Issue by FCT</title>
 		<link href="http://fonts.googleapis.com/css?family=Arvo" rel="stylesheet" type="text/css" />
 		<link href="http://fonts.googleapis.com/css?family=Bitter" rel="stylesheet" type="text/css" />
 		<link rel="stylesheet" type="text/css" href="/static/style.css" />
+		<script src="https://login.persona.org/include.js"></script>
+		<script src="${request.static_url('miniblog:static/jquery.js')}"></script>
+		<script type="text/javascript">jQuery.noConflict();</script>
+		<script type="text/javascript">
+		jQuery(document).ready(function() {
+			jQuery("#signin").click(function() { navigator.id.request(); return false;});
+	        jQuery("#signout").click(function() { navigator.id.logout(); return false;});
+            
+            var currentUser = ${'"%s"' % authenticated_userid(request) if authenticated_userid(request) else 'null'|n};
+            
+            navigator.id.watch({
+                loggedInUser: currentUser,
+                onlogin: function(assertion) {
+                    jQuery.post("${request.route_url('login')}", 
+                        {assertion: assertion},
+                        function(res, status, xhr) { window.location.reload(); }
+                    )
+                    .fail(
+                        function(xhr, status, err) { 
+                            navigator.id.logout();
+                            alert("Login failure: " + err);
+                        }
+                    );
+                },
+                
+                onlogout: function() {
+                    jQuery.post(
+                        "${request.route_url('logout')}",
+                        function(res, status, xhr) { window.location.reload(); }
+                    )
+                    .fail(
+                        function(xhr, status, err) { alert("Logout failure: " + err); }
+                    );
+                }
+            });
+		});
+
+		</script>
 	</head>
 	<body>
 		<div id="outer">
@@ -41,9 +82,11 @@
 						<li class="first">
 							<a href="${request.route_url('home')}">Blog</a>
 						</li>
+						% if view_execution_permitted(request.context, request, 'add_entry'):
 						<li>
 							<a href="${request.route_url('add_entry')}">Add Entry</a>
 						</li>
+						% endif
 						<li class="last">
 							<a href="${request.route_url('about')}">About</a>
 						</li>
@@ -111,43 +154,12 @@
 				</div>
 				<div id="sidebar2">
 					<h3>
-						Posuere pretium
+				    % if not authenticated_userid(request):
+						<a id="signin" href="">Login</a>
+					% else:
+					    <a id="signout" href="">Logout</a>
+				    % endif
 					</h3>
-					<ul>
-						<li class="first">
-							<a href="#">Lacinia amet et curae sed pellentesque</a>
-						</li>
-						<li>
-							<a href="#">Vitae a nisi rhoncus sociis veroeros</a>
-						</li>
-						<li>
-							<a href="#">Urna amet ornare?</a>
-						</li>
-						<li>
-							<a href="#">Aliquam lorem ipsum</a>
-						</li>
-						<li>
-							<a href="#">Ipsum pulvinar neque gravida aliquam</a>
-						</li>
-						<li>
-							<a href="#">Blandit purus lectus sed semper</a>
-						</li>
-						<li>
-							<a href="#">Lorem ipsum et dolor</a>
-						</li>
-						<li>
-							<a href="#">Varius placerat amet consequat duis</a>
-						</li>
-						<li>
-							<a href="#">Nulla purus cras amet aliquam nullam</a>
-						</li>
-						<li>
-							<a href="#">Sodales mus et vitae</a>
-						</li>
-						<li class="last">
-							<a href="#">Nisl mus nulla morbi</a>
-						</li>
-					</ul>
 				</div>
 				<div id="sidebar1">
 					<h3>
@@ -248,18 +260,3 @@
 		</div>
 	</body>
 </html>
-
-
-
-
-
-<body>
-	<ul>
-	<li><a href="/">Home</a></li>
-	<li><a href="/add">Add Entry</a></li>
-	</ul>
-	
-	<div>
-		${self.body()}
-	</div>
-</body>

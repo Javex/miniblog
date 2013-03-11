@@ -15,6 +15,7 @@ requires = [
     'zope.sqlalchemy',
     'waitress',
     'Markdown',
+    'Requests',
     ]
 
 setup(name='miniblog',

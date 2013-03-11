@@ -3,11 +3,19 @@ from sqlalchemy import Column, Integer, Text, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.schema import ForeignKey
+from pyramid.security import Allow, Everyone
 
 from zope.sqlalchemy import ZopeTransactionExtension
 
+
 DBSession = scoped_session(sessionmaker(extension=ZopeTransactionExtension()))
 Base = declarative_base()
+
+
+def userfinder(id_, request):
+    if id_ == request.registry.settings['admin_email']:
+        return ["administrator"]
+    return None
 
 
 class Entry(Base):
@@ -39,3 +47,9 @@ class Category(Base):
     __tablename__ = 'category'
     name = Column(Text, primary_key=True)
 
+
+class RootFactory(object):
+    __acl__ = [ (Allow, Everyone, 'view'),
+                (Allow, 'administrator', 'edit') ]
+    def __init__(self, request):
+        pass
