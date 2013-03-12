@@ -12,9 +12,13 @@ from sqlalchemy.sql import exists
 from sqlalchemy.sql.expression import desc
 from sqlalchemy.orm import subqueryload
 import transaction
+from webob.multidict import MultiDict
+import logging
 
 from miniblog.models import DBSession, Entry, Category
 from miniblog.forms import EntryForm, CategoryForm
+
+log = logging.getLogger(__name__)
 
 class BaseView(object):
 
@@ -112,16 +116,25 @@ class AdminView(BaseView):
     @view_config(route_name='add_entry', renderer='add.mako',
                  permission='edit')
     def add_entry(self):
-        form = EntryForm(self.request.POST)
+        form_data = MultiDict(self.request.session.get("add_entry_form", {}))
+        form_data.update(self.request.POST)
+        form = EntryForm(form_data)
         if self.request.method == 'POST':
+            if not form.validate():
+                for field, errors in form.errors.items():
+                    for error in errors:
+                        self.request.session.flash('Field "%s" has the following error: "%s"' % (field, error))
+                self.request.session["add_entry_form"] = form.data
+                return HTTPFound(location=self.request.route_url('add_entry'))
             entry = Entry(form.data["title"], form.data["text"])
-            if "category" in form.data:
+            if "category" in form.data and form.data["category"]:
                 category = DBSession.query(Category)\
                     .filter(Category.name == form.data["category"]).one()
                 entry.category = category
+            del self.request.session["add_entry_form"]
             DBSession.add(entry)
             DBSession.flush()
-            return HTTPFound(location=request.route_url('view_entry', id_=entry.id))
+            return HTTPFound(location=self.request.route_url('view_entry', id_=entry.id))
             # add the entry
         return {'form': form}
 

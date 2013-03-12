@@ -104,6 +104,28 @@ li.category_list a.delete {
 .dateList {
 }
 
+#content form label {
+	float:left;
+	min-width: 150px;
+}
+
+#content form input, #content form textarea{
+	background-color: #727272;
+	color: white;
+	border: 0 none;
+	border-bottom: 1px solid #B2B2B2;
+	border-top: 1px solid #494949;
+}
+
+#content form input[type=text] {
+	padding: 4px;
+}
+
+#content form textarea {
+	width: 500px;
+	height: 200px;
+}
+
 .dateList .date {
 	color: #909090;
 	font-size: 0.9em;

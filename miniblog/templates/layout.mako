@@ -100,8 +100,14 @@
 				<div id="content">
 			    % if view.request.session.peek_flash():
 				    <ul>
-			        % for message in view.request.session.pop_flash():
-				        <li>${message}</li>
+			        % for index, message in enumerate(view.request.session.pop_flash(), 1):
+				        <li class="
+				        % if index == 1:
+						    first
+						% elif index == len(view.categories):
+						    last
+						% endif
+				        ">${message}</li>
 			        % endfor
 				    </ul>
 			    % endif

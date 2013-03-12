@@ -4,6 +4,7 @@ from pyramid.interfaces import ISession
 from pyramid.security import Allow, Everyone
 from sqlalchemy import Column, Integer, Text, DateTime, PickleType
 from sqlalchemy.event import listen
+from sqlalchemy.ext.mutable import Mutable
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session as SASession
 from sqlalchemy.orm import scoped_session, sessionmaker, relationship
@@ -22,16 +23,20 @@ DBSession = scoped_session(sessionmaker(extension=ZopeTransactionExtension()))
 Base = declarative_base()
 
 
-def detach(db_session):
+def detach(db_session, transaction=None):
     """Remove the pyramid session from the database session to prevent errors
     after the transaction has been committed."""
     from pyramid.threadlocal import get_current_request
     request = get_current_request()
-    log.debug("Expunging (detaching) session for DBSession")
+    log.debug("Expunging (detaching) session for DBSession by event ")
+    db_session.refresh(request.session, ['_additional_data'])
     db_session.expunge(request.session)
 
+import transaction
+current = transaction.get()
+current.addBeforeCommitHook(detach, DBSession)
 
-listen(SASession, 'after_commit', detach)
+# listen(SASession, 'after_commit', detach)
 """Set up listener for after_commit event to detach the pyramid session."""
 
 
@@ -86,6 +91,35 @@ class RootFactory(object):
     def __init__(self, request):
         pass
 
+class MutableDict(Mutable, dict):
+
+    @classmethod
+    def coerce(cls, key, value):
+        if not isinstance(value, MutableDict):
+            if isinstance(value, dict):
+                return MutableDict(value)
+            return Mutable.coerce(key, value)
+        else:
+            return value
+
+    def __delitem__(self, key):
+        log.debug('Session change occurred: Deleting key "%s"'
+                  % key)
+        dict.__delitem__(self, key)
+        self.changed()
+
+    def __setitem__(self, key, value):
+        log.debug('Session change occurred: Setting key "%s" to value "%s"'
+                  % (key, value))
+        dict.__setitem__(self, key, value)
+        self.changed()
+
+    def __getstate__(self):
+        return dict(self)
+
+    def __setstate__(self, state):
+        self.update(self)
+
 
 class SessionMessage(Base):
     """A message in a specific session with a specific queue. Used for
@@ -116,9 +150,12 @@ class Session(Base):
     id = Column(Text, primary_key=True)
     _created = Column('created', DateTime)
     message_queue = relationship('SessionMessage',
-                                 backref='session')
+                                 backref='session',
+                                 lazy="subquery")
     csrf_token = Column(Text, nullable=False)
-    additional_data = Column(PickleType)
+    _additional_data = Column('additional_data',
+                              MutableDict.as_mutable(PickleType))
+    """Don't use this directly: Use session itself as a dict"""
 
     new = False
 
@@ -128,7 +165,7 @@ class Session(Base):
         self._created = datetime.now()
         self.new = True
         self.new_csrf_token()
-        self.additional_data = {}
+        self._additional_data = {}
 
     @property
     def created(self):
@@ -174,58 +211,58 @@ class Session(Base):
         return self.csrf_token
 
     def __getitem__(self, key):
-        return self.additional_data.__getitem__(key)
+        return self._additional_data.__getitem__(key)
 
     def get(self, key, default=None):
-        return self.additional_data.get(key, default)
+        return self._additional_data.get(key, default)
 
     def __delitem__(self, key):
-        return self.additional_data.__delitem__(key)
+        return self._additional_data.__delitem__(key)
 
     def __setitem__(self, key, value):
-        return self.additional_data.__setitem__(key, value)
+        return self._additional_data.__setitem__(key, value)
 
     def keys(self):
-        return self.additional_data.keys()
+        return self._additional_data.keys()
 
     def values(self):
-        return self.additional_data.values()
+        return self._additional_data.values()
 
     def items(self):
-        return self.additional_data.items()
+        return self._additional_data.items()
 
     def iterkeys(self):
-        return self.additional_data.iterkeys()
+        return self._additional_data.iterkeys()
 
     def itervalues(self):
-        return self.additional_data.itervalues()
+        return self._additional_data.itervalues()
 
     def iteritems(self):
-        return self.additional_data.iteritems()
+        return self._additional_data.iteritems()
 
     def clear(self):
-        return self.additional_data.clear()
+        return self._additional_data.clear()
 
     def update(self, d):
-        return self.additional_data.update(d)
+        return self._additional_data.update(d)
 
     def setdefault(self, key, default=None):
-        return self.additional_data.setdefault(key, default)
+        return self._additional_data.setdefault(key, default)
 
     def pop(self, k, *args):
-        return self.additional_data.pop(k, *args)
+        return self._additional_data.pop(k, *args)
 
     def popitem(self):
-        return self.additional_data.popitem()
+        return self._additional_data.popitem()
 
     def __len__(self):
-        return self.additional_data.__len__()
+        return self._additional_data.__len__()
 
     def __iter__(self):
-        return self.additional_data.__iter__()
+        return self._additional_data.__iter__()
 
     def __contains__(self, key):
-        return self.additional_data.__contains__(key)
+        return self._additional_data.__contains__(key)
 
     def _set_cookie(self, request, response):
         if not self._cookie_on_exception and \
@@ -277,14 +314,13 @@ def get_session(request):
             raise ValueError("No cookie set!")
         hash, session_id, timestamp = cookie.split(":")
         timestamp = int(timestamp)
-        log.debug("Data: Cookie: %s, Hash: %s, Session_id: %s, timestamp: %s" % (cookie, hash, session_id, timestamp))
         if hash != calc_digest(secret, session_id, timestamp):
             raise ValueError("Invalid session hash!")
         try:
             session = DBSession.query(Session)\
                 .filter(Session.id == session_id).one()
         except NoResultFound:
-            raise ValueError("No session found!")
+            raise ValueError("No session in database!")
 
         if timestamp + duration < time():
             DBSession.delete(session)
