@@ -1,29 +1,50 @@
 from datetime import datetime
 from hashlib import sha512
-import hmac
-import os
-from sqlalchemy import Column, Integer, Text, DateTime, PickleType
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import scoped_session, sessionmaker, relationship
-from sqlalchemy.schema import ForeignKey
-from sqlalchemy.orm.exc import NoResultFound
-from pyramid.security import Allow, Everyone
 from pyramid.interfaces import ISession
+from pyramid.security import Allow, Everyone
+from sqlalchemy import Column, Integer, Text, DateTime, PickleType
+from sqlalchemy.event import listen
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import Session as SASession
+from sqlalchemy.orm import scoped_session, sessionmaker, relationship
+from sqlalchemy.orm.exc import NoResultFound
+from sqlalchemy.schema import ForeignKey
 from time import time
-from zope.sqlalchemy import ZopeTransactionExtension
 from zope.interface import implements
+from zope.sqlalchemy import ZopeTransactionExtension
+import hmac
+import logging
+import os
 
+
+log = logging.getLogger(__name__)
 DBSession = scoped_session(sessionmaker(extension=ZopeTransactionExtension()))
 Base = declarative_base()
 
 
+def detach(db_session):
+    """Remove the pyramid session from the database session to prevent errors
+    after the transaction has been committed."""
+    from pyramid.threadlocal import get_current_request
+    request = get_current_request()
+    log.debug("Expunging (detaching) session for DBSession")
+    db_session.expunge(request.session)
+
+
+listen(SASession, 'after_commit', detach)
+"""Set up listener for after_commit event to detach the pyramid session."""
+
+
 def userfinder(id_, request):
+    """Pass in the email address and only return the administrator principal
+    if ``id_`` matches the configuration value ``admin_email``"""
     if id_ == request.registry.settings['admin_email']:
         return ["administrator"]
     return None
 
 
 class Entry(Base):
+    """A single blog entry."""
     __tablename__ = 'entry'
     id = Column(Integer, primary_key=True)
     title = Column(Text, unique=True, nullable=False)
@@ -50,6 +71,7 @@ class Entry(Base):
 
 
 class Category(Base):
+    """A category in the blog."""
     __tablename__ = 'category'
     name = Column(Text, primary_key=True)
 
@@ -58,6 +80,7 @@ class Category(Base):
 
 
 class RootFactory(object):
+    """A simple factory for the ACL/Authorization system."""
     __acl__ = [ (Allow, Everyone, 'view'),
                 (Allow, 'administrator', 'edit') ]
     def __init__(self, request):
@@ -65,6 +88,8 @@ class RootFactory(object):
 
 
 class SessionMessage(Base):
+    """A message in a specific session with a specific queue. Used for
+    pyramids session system."""
     __tablename__ = 'session_message'
     id = Column(Integer, primary_key=True)
     message = Column(Text, nullable=False)
@@ -82,6 +107,8 @@ class SessionMessage(Base):
         return self.message
 
 class Session(Base):
+    """A session with a specific session ID for a specific client. Used for
+    pyramids session system."""
     implements(ISession)
 
     __tablename__ = 'session'
@@ -215,7 +242,7 @@ class Session(Base):
                 tmp_response.set_cookie(*args, **kwargs)
                 response.headerlist.append(tmp_response.headerlist[-1])
 
-        print("Setting cookie %s with value %s for session with id %s" % (self._cookie_name, self._cookie, self.id))
+        log.debug("Setting cookie %s with value %s for session with id %s" % (self._cookie_name, self._cookie, self.id))
         set_cookie(
             self._cookie_name,
             value=self._cookie,
@@ -240,13 +267,17 @@ class Session(Base):
 
 
 def get_session(request):
+
     on_exception, secure, httponly, path, name, secret, \
         duration, max_age, domain = get_cookie_settings(request)
     try:
-        cookie = request.cookies.get('session').strip('"')
+        try:
+            cookie = request.cookies.get('session').strip('"')
+        except AttributeError:
+            raise ValueError("No cookie set!")
         hash, session_id, timestamp = cookie.split(":")
         timestamp = int(timestamp)
-        print("Data: Cookie: %s, Hash: %s, Session_id: %s, timestamp: %s" % (cookie, hash, session_id, timestamp))
+        log.debug("Data: Cookie: %s, Hash: %s, Session_id: %s, timestamp: %s" % (cookie, hash, session_id, timestamp))
         if hash != calc_digest(secret, session_id, timestamp):
             raise ValueError("Invalid session hash!")
         try:
@@ -258,15 +289,16 @@ def get_session(request):
         if timestamp + duration < time():
             DBSession.delete(session)
             raise ValueError("Session expired!")
-    except (ValueError, AttributeError) as e:
+    except ValueError as e:
+        log.debug("The exception message was: %s" % e)
         session, cookie = create_session(secret, request)
-        print("Created session with id %s and cookie %s" % (session.id, cookie))
+        log.debug("Created session with id %s and cookie %s" % (session.id, cookie))
         DBSession.add(session)
-        print("Error: %s" % e)
     session.configure(cookie, on_exception, secure, httponly, path, name,
                       max_age, domain)
+    session.message_queue
     request.add_response_callback(session._set_cookie)
-    print("Returning session with id %s" % session.id)
+    log.debug("Returning session with id %s for path %s" % (session.id, request.path))
     return session
 
 
