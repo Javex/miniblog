@@ -9,7 +9,7 @@ class EntryForm(Form):
     category = SelectField('Category:',
                            choices=([('', ' - None - ')] + [(name, name)
                                     for name, in DBSession.
-                                    query(Category.name).all()]))
+                                    query(Category.name)]))
     submit = SubmitField('Speichern')
 
 class CategoryForm(Form):

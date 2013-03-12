@@ -87,6 +87,20 @@ span.date {
 	margin-top: -35px;
 }
 
+li.category_list {
+	line-height: 24px;
+}
+
+img.cross {
+	width: 16px;
+	height: 16px;
+	vertical-align:middle;
+}
+
+li.category_list a.delete {
+	text-decoration: none;
+}
+
 .dateList {
 }
 

@@ -44,22 +44,6 @@ class BaseView(object):
             .all()[(page - 1) * 5:page * 5 + 5]
         return {'entries': all_entries}
 
-    @view_config(route_name='add_entry', renderer='add.mako',
-                 permission='edit')
-    def add_entry(self):
-        form = EntryForm(self.request.POST)
-        if self.request.method == 'POST':
-            entry = Entry(form.data["title"], form.data["text"])
-            if "category" in form.data:
-                category = DBSession.query(Category)\
-                    .filter(Category.name == form.data["category"]).one()
-                entry.category = category
-            DBSession.add(entry)
-            DBSession.flush()
-            return HTTPFound(location=request.route_url('view_entry', id_=entry.id))
-            # add the entry
-        return {'form': form}
-
     @view_config(route_name='view_entry', renderer='entry.mako')
     def view_entry(self):
         id_ = self.request.matchdict['id_']
@@ -84,16 +68,6 @@ class BaseView(object):
             .all()
         return {'results': results}
 
-    @view_config(route_name='manage_categories', renderer='categories.mako',
-                 permission='edit')
-    def manage_categories(self):
-        form = CategoryForm(self.request.POST)
-        if self.request.method == 'POST':
-            category = Category(form.data['name'])
-            DBSession.add(category)
-            return HTTPFound(location=self.request.route_url('home'))
-        return {'form': form}
-
     @view_config(route_name='login')
     def login(self):
         verify_url = self.request.registry.settings['persona_verifier_url']
@@ -102,7 +76,7 @@ class BaseView(object):
         except KeyError:
             raise HTTPBadRequest("No assertion provided, could not log in!")
         data = {'assertion': assertion, 'audience': self.request.host_url}
-        resp = self.requests.post(verify_url, data=data, verify=True)
+        resp = requests.post(verify_url, data=data, verify=True)
 
         if resp.ok:
             verification_data = json.loads(resp.content)
@@ -121,3 +95,47 @@ class BaseView(object):
     def logout(self):
         headers = forget(self.request)
         return Response(headers=headers)
+
+class AdminView(BaseView):
+
+    @view_config(route_name='manage_categories', renderer='categories.mako',
+                 permission='edit')
+    def manage_categories(self):
+        form = CategoryForm(self.request.POST)
+        if self.request.method == 'POST':
+            category = Category(form.data['name'])
+            DBSession.add(category)
+            return HTTPFound(location=self.request.route_url('manage_categories'))
+        categories = DBSession.query(Category).all()
+        return {'form': form, 'categories': categories}
+
+    @view_config(route_name='add_entry', renderer='add.mako',
+                 permission='edit')
+    def add_entry(self):
+        form = EntryForm(self.request.POST)
+        if self.request.method == 'POST':
+            entry = Entry(form.data["title"], form.data["text"])
+            if "category" in form.data:
+                category = DBSession.query(Category)\
+                    .filter(Category.name == form.data["category"]).one()
+                entry.category = category
+            DBSession.add(entry)
+            DBSession.flush()
+            return HTTPFound(location=request.route_url('view_entry', id_=entry.id))
+            # add the entry
+        return {'form': form}
+
+    @view_config(route_name='delete_category', permission='edit')
+    def delete_category(self):
+        category = DBSession.query(Category)\
+            .options(subqueryload(Category.entries))\
+            .filter(Category.name == self.request.matchdict["name_"])\
+            .one()
+        if category.entries:
+            self.request.session.flash(
+                'There are still entries in category %s, cannot delete!'
+                % category.name)
+        else:
+            DBSession.delete(category)
+        return HTTPFound(location=self.request.route_url('manage_categories'))
+

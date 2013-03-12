@@ -98,61 +98,14 @@
 			</div>
 			<div id="main">
 				<div id="content">
+			    % if view.request.session.peek_flash():
+				    <ul>
+			        % for message in view.request.session.pop_flash():
+				        <li>${message}</li>
+			        % endfor
+				    </ul>
+			    % endif
 					${self.body()}
-					
-					
-					
-					<!--<div id="box1">
-					
-						<h2>
-							Welcome to Temporary Issue
-						</h2><img class="left" src="static/images/pic1.jpg" width="180" height="220" alt="" />
-						<p>
-							This is <strong>Temporary Issue</strong>, a three column CSS template designed by
-							<a href="http://www.freecsstemplates.org/">FCT</a> with photos from 
-							<a href="http://www.pdphoto.org/">PDPhoto</a>. It's released (for free) under the
-							<a href="http://www.freecsstemplates.org/license/">Creative Commons Attribution 3.0 license</a>,
-							so feel free to use it for any personal or commercial work, just keep our footer credit links intact.
-							Hit up our <a href="http://www.freecsstemplates.org/">website</a> for more awesomely
-							cool free templates, and follow us on <a href="http://twitter.com/freecsstemplate">Twitter</a>
-							(<a href="http://twitter.com/freecsstemplate">@freecsstemplate</a>) for updates, announcements, and other
-							mildly interesting ramblings.
-						</p>
-					</div>
-					<div id="box2">
-						<h3>
-							Interdum praesent non integer
-						</h3>
-						<p>
-							Urna porttitor varius dictum. Risus fringilla tristique dignissim vel vel lorem pharetra. Semper praesent 
-							curabitur faucibus suscipit scelerisque luctus. Pellentesque imperdiet viverra aliquet. Nisi lectus sollicitudin 
-							phasellus. Montes nullam mollis malesuada interdum. Integer nec sed fringilla aenean luctus blandit suscipit. 
-							Eleifend curabitur accumsan aenean lorem ipsum dolore.
-						</p>
-						<ul class="dateList">
-							<li class="first">
-								<a href="#">Porta viverra consequat pulvinar ante pretium</a>
-								<span class="date">&mdash; 3 hours ago</span>
-							</li>
-							<li>
-								<a href="#">Sed etiam integer veroeros metus leo volutpat aliquet</a>
-								<span class="date">&mdash; 18 hours ago</span>
-							</li>
-							<li>
-								<a href="#">Turpis facilisis vel praesent odio vivamus diam primis</a>
-								<span class="date">&mdash; Yesterday</span>
-							</li>
-							<li>
-								<a href="#">Fringilla velit vitae hendrerit malesuada phasellus</a>
-								<span class="date">&mdash; 2 days ago</span>
-							</li>
-							<li class="last">
-								<a href="#">Ipsum orci faucibus mus mollis porta ante aliquam</a>
-								<span class="date">&mdash; 4 days ago</span>
-							</li>
-						</ul>
-					</div>
-					-->
 					<br class="clear" />
 				</div>
 				<div id="sidebar2">
