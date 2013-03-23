@@ -19,7 +19,9 @@
 		<meta name="description" content="" />
 		<meta http-equiv="content-type" content="text/html; charset=utf-8" />
 		<meta http-equiv="X-UA-Compatible" content="IE=Edge">
-		<title>${view.request.registry.settings["title"]}</title>
+		<title>
+		<%block name="title" /> ${view.request.registry.settings["title"]}
+		</title>
 		<link href="http://fonts.googleapis.com/css?family=Arvo" rel="stylesheet" type="text/css" />
 		<link href="http://fonts.googleapis.com/css?family=Bitter" rel="stylesheet" type="text/css" />
 		<link rel="stylesheet" type="text/css" href="/static/style.css" />
@@ -170,7 +172,7 @@
 					    % if view.recent:
 					    <ul>
 					    % for index, entry in enumerate(view.recent, 1):
-						    <li class="
+						    <li class="recent 
 						    % if index == 1:
 						    first
 						    % elif index == len(view.recent):
@@ -184,7 +186,7 @@
 								    ${entry.title}
 							    % endif
 							    </a>
-							    <span class="pretty-date">&nbsp;(${entry.pretty_date})</span>
+							    <span class="date">&nbsp;(${entry.pretty_date})</span>
 						    </li>
 					    % endfor
 					    </ul>

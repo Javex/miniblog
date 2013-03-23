@@ -10,8 +10,14 @@
         % endif
     </h1>
 	<span class="date">Posted on: ${entry.entry_time.strftime('%Y-%m-%d %H:%M:%S')}</span>
-	<p>${entry.text|n}</p>
+	<div class="entry-wrap">
+    	${entry.text|n}
+    </div>
 </%def>
+
+<%block name="title">
+${entry.title} - 
+</%block>
 
 <%block name="body">
 	${display_entry(entry)}

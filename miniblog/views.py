@@ -1,9 +1,9 @@
 import json
 from pyramid.decorator import reify
 from pyramid.response import Response
-from pyramid.view import view_config
+from pyramid.view import view_config, notfound_view_config
 from pyramid.httpexceptions import HTTPFound, HTTPBadRequest, \
-    HTTPInternalServerError
+    HTTPInternalServerError, HTTPNotFound
 from pyramid.security import remember, forget
 import requests
 from sqlalchemy import func
@@ -11,6 +11,7 @@ from sqlalchemy.exc import DBAPIError
 from sqlalchemy.sql import exists
 from sqlalchemy.sql.expression import desc
 from sqlalchemy.orm import subqueryload
+from sqlalchemy.orm.exc import NoResultFound
 import transaction
 from webob.multidict import MultiDict
 import logging
@@ -56,7 +57,11 @@ class BaseView(object):
     @view_config(route_name='view_entry', renderer='entry.mako')
     def view_entry(self):
         id_ = self.request.matchdict['id_']
-        entry = DBSession.query(Entry).filter(Entry.id == id_).first()
+        try:
+            entry = DBSession.query(Entry).filter(Entry.id == id_).one()
+        except NoResultFound:
+            raise HTTPNotFound("Blog post not found. This blogpost was "
+                               "possibly deleted.")
         return {'entry': entry}
 
     @view_config(route_name='view_categories', renderer='entries.mako')
@@ -105,6 +110,11 @@ class BaseView(object):
         headers = forget(self.request)
         return Response(headers=headers)
 
+    @notfound_view_config(renderer='404.mako')
+    def view_404(self):
+        return {'msg': self.request.exception.message}
+
+
 class AdminView(BaseView):
 
     @view_config(route_name='delete_entry', permission='edit')
@@ -135,6 +145,7 @@ class AdminView(BaseView):
         form_data.update(self.request.POST)
         form = EntryForm(form_data)
         form.category.choices = [('', ' - None - ')] + [(name[0], name[0]) for name in get_categories()]
+        preview = None
         if self.request.method == 'POST':
             if not form.validate():
                 for field, errors in form.errors.items():
@@ -143,19 +154,22 @@ class AdminView(BaseView):
                 self.request.session["add_entry_form"] = form.data
                 return HTTPFound(location=self.request.route_url('add_entry'))
             entry = Entry(form.data["title"], form.data["text"])
-            if "category" in form.data and form.data["category"]:
-                category = DBSession.query(Category)\
-                    .filter(Category.name == form.data["category"]).one()
-                entry.category = category
-            if "add_entry_form" in self.request.session:
-                del self.request.session["add_entry_form"]
-            DBSession.add(entry)
-            DBSession.flush()
-            get_categories.invalidate()
-            get_recent_posts.invalidate()
-            return HTTPFound(location=self.request.route_url('view_entry', id_=entry.id))
-            # add the entry
-        return {'form': form}
+            if form.submit.data:
+                if "category" in form.data and form.data["category"]:
+                    category = DBSession.query(Category)\
+                        .filter(Category.name == form.data["category"]).one()
+                    entry.category = category
+                if "add_entry_form" in self.request.session:
+                    del self.request.session["add_entry_form"]
+                DBSession.add(entry)
+                # add the entry
+                DBSession.flush()
+                get_categories.invalidate()
+                get_recent_posts.invalidate()
+                return HTTPFound(location=self.request.route_url('view_entry', id_=entry.id))
+            if form.preview.data:
+                preview = entry
+        return {'form': form, 'preview': preview}
 
     @view_config(route_name='delete_category', permission='edit')
     def delete_category(self):
