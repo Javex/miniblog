@@ -1,6 +1,14 @@
 <%inherit file="layout.mako" />
 <%def name="display_entry(entry)">
-	<h1><a href="${view.request.route_url('view_entry', id_=entry.id)}">${entry.title}</a></h1>
+<% from pyramid.security import has_permission %>
+	<h1>
+	    <a href="${view.request.route_url('view_entry', id_=entry.id)}">${entry.title}</a>
+	    % if has_permission("edit", view.request.context, view.request):
+	    <a href="${view.request.route_url('delete_entry', id_=entry.id)}" class="delete">
+            <img class="cross" src="${view.request.static_url('miniblog:static/images/Cross-32.png')}">
+        </a>
+        % endif
+    </h1>
 	<span class="date">Posted on: ${entry.entry_time.strftime('%Y-%m-%d %H:%M:%S')}</span>
 	<p>${entry.text|n}</p>
 </%def>

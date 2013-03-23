@@ -29,13 +29,15 @@ miniblog/static/pyramid-small.png
 miniblog/static/pyramid.png
 miniblog/static/style.css
 miniblog/static/transparent.gif
+miniblog/static/images/Cross-32.png
 miniblog/static/images/pic1.jpg
 miniblog/static/images/plain_sign_in_black.png
 miniblog/static/images/search.gif
 miniblog/templates/about.mako
 miniblog/templates/add.mako
+miniblog/templates/categories.mako
+miniblog/templates/entries.mako
 miniblog/templates/entry.mako
-miniblog/templates/home.mako
 miniblog/templates/index.html
 miniblog/templates/layout.mako
 miniblog/templates/search.mako

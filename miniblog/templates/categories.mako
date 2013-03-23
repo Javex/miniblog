@@ -1,10 +1,13 @@
 <%inherit file="layout.mako" />
 <%block name="body">
 <form method="post">
+    <legend>Add a category</legend>
 	${form.name.label} ${form.name()}
 	${form.submit()}
 </form>
 <br />
+
+% if categories:
 <div>
     <h3>Currently available categories:</h3>
     <ul>
@@ -24,4 +27,5 @@
     % endfor
     </ul>
 </div>
+% endif
 </%block>

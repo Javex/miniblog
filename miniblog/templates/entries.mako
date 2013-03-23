@@ -5,4 +5,6 @@
 % for entry in entries:
 	${entry_file.display_entry(entry)}
 % endfor
+
+${entries.pager()}
 </%block>

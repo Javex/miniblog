@@ -8,7 +8,7 @@ from sqlalchemy.ext.mutable import Mutable
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session as SASession
 from sqlalchemy.orm import scoped_session, sessionmaker, relationship
-from sqlalchemy.orm.exc import NoResultFound
+from sqlalchemy.orm.exc import NoResultFound, DetachedInstanceError
 from sqlalchemy.schema import ForeignKey
 from time import time
 from zope.interface import implements
@@ -16,28 +16,70 @@ from zope.sqlalchemy import ZopeTransactionExtension
 import hmac
 import logging
 import os
+from functools import wraps
+from sqlalchemy.sql.expression import desc
+from dogpile.cache import make_region
 
 
 log = logging.getLogger(__name__)
 DBSession = scoped_session(sessionmaker(extension=ZopeTransactionExtension()))
 Base = declarative_base()
+cache = make_region()
 
 
-def detach(db_session, transaction=None):
-    """Remove the pyramid session from the database session to prevent errors
-    after the transaction has been committed."""
-    from pyramid.threadlocal import get_current_request
-    request = get_current_request()
-    log.debug("Expunging (detaching) session for DBSession by event ")
-    db_session.refresh(request.session, ['_additional_data'])
-    db_session.expunge(request.session)
+def pretty_date(time=False):
+    """
+    Get a datetime object or a int() Epoch timestamp and return a
+    pretty string like 'an hour ago', 'Yesterday', '3 months ago',
+    'just now', etc
+    """
+    from datetime import datetime
+    now = datetime.now()
+    if type(time) is int:
+        diff = now - datetime.fromtimestamp(time)
+    elif isinstance(time, datetime):
+        diff = now - time
+    elif not time:
+        diff = now - now
+    second_diff = diff.seconds
+    day_diff = diff.days
 
-import transaction
-current = transaction.get()
-current.addBeforeCommitHook(detach, DBSession)
+    if day_diff < 0:
+        return ''
 
-# listen(SASession, 'after_commit', detach)
-"""Set up listener for after_commit event to detach the pyramid session."""
+    if day_diff == 0:
+        if second_diff < 10:
+            return "just now"
+        if second_diff < 60:
+            return str(second_diff) + " seconds ago"
+        if second_diff < 120:
+            return  "a minute ago"
+        if second_diff < 3600:
+            return str(second_diff / 60) + " minutes ago"
+        if second_diff < 7200:
+            return "an hour ago"
+        if second_diff < 86400:
+            return str(second_diff / 3600) + " hours ago"
+    if day_diff == 1:
+        return "Yesterday"
+    if day_diff < 7:
+        return str(day_diff) + " days ago"
+    if day_diff < 31:
+        return str(day_diff / 7) + " weeks ago"
+    if day_diff < 365:
+        return str(day_diff / 30) + " months ago"
+    return str(day_diff / 365) + " years ago"
+
+
+@cache.cache_on_arguments()
+def get_categories():
+    return DBSession.query(Category.name).all()
+
+
+@cache.cache_on_arguments()
+def get_recent_posts(count=7):
+    return DBSession.query(Entry)\
+        .order_by(desc(Entry.entry_time))[:count]
 
 
 def userfinder(id_, request):
@@ -74,6 +116,10 @@ class Entry(Base):
     def text(self, text):
         self._text = text
 
+    @property
+    def pretty_date(self):
+        return pretty_date(self.entry_time)
+
 
 class Category(Base):
     """A category in the blog."""
@@ -91,8 +137,39 @@ class RootFactory(object):
     def __init__(self, request):
         pass
 
-class MutableDict(Mutable, dict):
 
+def mutated_additional_data(func):
+    """A decorator to track mutation and propagate it to the database.
+
+    The decorator is to be used on all functions that change the value of the
+    :attr:`Session.additional_data` dict. Functions like ``set`` or ``pop``
+    need this decorator to ensure the changes are afterwards propagated
+    into the database.
+
+    From an implementation point it just sets the complete dictionary as a
+    new value."""
+    func_name = func.__name__
+    @wraps(func)
+    def handle_mutate(session, *args, **kwargs):
+        log.debug("Mutating value on function %s with args %s and kwargs %s"
+                  % (func_name, unicode(args), unicode(kwargs)))
+        ret = func(session, *args, **kwargs)
+        session._additional_data = session._cache_additional_data
+        return ret
+    return handle_mutate
+
+
+class MutableDict(Mutable, dict):
+    """Make a mutable dict for SQLAlchemy's ``PickleType``.
+
+    Usage:
+
+    .. code-block:: python
+
+        class MyModel(Base):
+            my_data = Column('additional_data',
+                             MutableDict.as_mutable(PickleType))
+    """
     @classmethod
     def coerce(cls, key, value):
         if not isinstance(value, MutableDict):
@@ -121,174 +198,289 @@ class MutableDict(Mutable, dict):
         self.update(self)
 
 
-class SessionMessage(Base):
-    """A message in a specific session with a specific queue. Used for
-    pyramids session system."""
-    __tablename__ = 'session_message'
-    id = Column(Integer, primary_key=True)
-    message = Column(Text, nullable=False)
-    queue = Column(Text, default='')
-    session_id = Column(Integer, ForeignKey('session.id'))
-
-    def __init__(self, msg, queue=''):
-        self.message = msg
-        self.queue = queue
-
-    def __str__(self):
-        return unicode(self).encode('utf-8')
-
-    def __unicode__(self):
-        return self.message
-
 class Session(Base):
-    """A session with a specific session ID for a specific client. Used for
-    pyramids session system."""
-    implements(ISession)
+    """A session object for pyramid sessions.
 
+    Implements the :class:`pyramid.interfaces.ISession` interface. While it
+    uses a database to store the session, the session id is stored in the
+    cookie. Howevever, under certain conditions the data *might* be accessed
+    after the request was processed and then the object may be detached from
+    the database session. Thus a caching mechanism is implemented
+    that locally keeps the relevant copies. It tries to fetch values from
+    the database and if a :exc:`sqlalchemy.orm.exc.DetachedInstanceError`
+    occurs, it just returns a default (empty) value.
+
+    Attrs:
+        ``id``: The session id, a 20 byte hex string matching the one stored
+        on the users end in a cookie, e.g.
+        ``298f74562fa2c2abfd158725d6e40fdb88cc6503``.
+
+        ``created``: A unix timestamp of when the cookie was created. The
+        database stores a :class:`datetime.datetime` object that can be
+        accessed through the internal ``_created`` attribute if needed.
+
+        ``csrf_token``: On creation a CSRF token is automatically created.
+        This can be used to prevent CSRF attacks (see `OWASP <https://www.owasp.org/index.php/Cross-Site_Request_Forgery_%28CSRF%29>`_
+        for details).
+
+        .. note::
+            Make sure this is used where needed as it prevents security
+            problems.
+
+        ``additional_data``: Don't access this directy, use the session
+        object itself as a dictionary (as specified by the
+        :class:`ISession <pyramid.interfaces.ISession>` interface).
+
+        ``message_queue``: A list of flash messages of type
+        :class:`SessionMessage`. Use it as per interface definition.
+
+        .. note::
+            This does not implement the caching mechanism so lazy loading
+            might be a problem. However, since all messages are eagerly
+            loaded, it should not be a problem.
+
+        ``new``: Whether this is a new session.
+
+        ``cache_*``: These attributes are cache managed. Don't access them
+        directly. Ever.
+    """
+    implements(ISession)
     __tablename__ = 'session'
 
-    id = Column(Text, primary_key=True)
-    _created = Column('created', DateTime)
-    message_queue = relationship('SessionMessage',
-                                 backref='session',
-                                 lazy="subquery")
-    csrf_token = Column(Text, nullable=False)
+    _id = Column('id', Text, primary_key=True)
+    _created = Column('created', DateTime, nullable=False)
+    _csrf_token = Column('csrf_token', Text, nullable=False)
     _additional_data = Column('additional_data',
                               MutableDict.as_mutable(PickleType))
-    """Don't use this directly: Use session itself as a dict"""
+    message_queue = relationship('SessionMessage',
+                                 backref='session',
+                                 lazy='joined')
 
     new = False
+    db_names = ['id', 'csrf_token', 'additional_data']
+    """List of names that are handled dynamically by a cache"""
+
+    _cache_id = None
+    _cache_created = None
+    _cache_csrf_token = None
+    _cache_additional_data = None
+
+    defaults = {'additional_data': {}, 'id': '', 'csrf_token': ''}
+    """Default values for specific attributes to be returned if the session
+    is detached."""
+
+    _delete_cookie = False
+    """Whether the cookie should be deleted. Only used by :meth:`invalidate`.
+    """
+
 
     def __init__(self, request):
-        self.id = os.urandom(20).encode('hex')
+        self.id = os.urandom(20).encode("hex")
         self.request = request
         self._created = datetime.now()
+        self._cache_created = self._created
         self.new = True
         self.new_csrf_token()
         self._additional_data = {}
+        self._cache_additional_data = self._additional_data
+
+    def __getattr__(self, name):
+        """Handle caching access for some values.
+        """
+        if name in self.db_names:
+            cache_val = getattr(self, '_cache_%s' % name)
+            if cache_val is None:
+                try:
+                    setattr(self, '_cache_%s' % name,
+                            getattr(self, '_%s' % name))
+                except DetachedInstanceError:
+                    return self.defaults[name]
+                cache_val = getattr(self, '_cache_%s' % name)
+            return cache_val
+        else:
+            return Base.__getattribute__(self, name)
+
+    def __setattr__(self, name, value):
+        """Handle caching access for some values."""
+        if name in self.db_names:
+            log.debug("Setting %s to %s" % (name, value))
+            setattr(self, '_%s' % name, value)
+            setattr(self, '_cache_%s' % name, getattr(self, name))
+        else:
+            return super(Session, self).__setattr__(name, value)
+
+    def new_csrf_token(self):
+        """Generate a new csrf token and store it in the database."""
+        token = os.urandom(20).encode('hex')
+        self.csrf_token = token
+        return self.csrf_token
+
+    def get_csrf_token(self):
+        """Return the current csrf token."""
+        return self.csrf_token
 
     @property
     def created(self):
-        return int(self._created.strftime("%s"))
-
-    @created.setter
-    def created(self, time):
-        self._created = datetime.fromtimestamp(time)
+        return int(self._cache_created.strftime("%s"))
 
     def invalidate(self):
+        """Invalidate the current session.
+
+        Remove the object from the database and delete the cookie on the
+        client side. The actual deletion is done by :meth:`_set_cookie`
+        with a request callback. Here, only the ``_delete_cookie`` value
+        is set to ``True``."""
         DBSession.delete(self)
-        # remove cookie
+        self._delete_cookie = True
 
     def changed(self):
-        # Doesn't need to be implemented as SQLAlchemy tracks all mutations
-        # in here.
+        """Does not need to be implemented as mutation tracking is automatic."""
         pass
 
     def flash(self, msg, queue='', allow_duplicate=True):
+        """Store a given message in the flash queue.
+
+        Args:
+            ``msg``: ``unicode`` string to be stored as the message.
+
+            ``queue``: Optionally a queue name. This may be used to
+            implement a different error queue. By default it is empty
+            (``''``).
+
+            ``allow_duplicate``: Whether the same message is allowed. If
+            set to ``False``, the message will not be added a second time
+            if it is already present."""
         if not allow_duplicate and \
         filter(lambda m: m.queue == queue and
                m.message == msg, self.message_queue):
             return
-
         message = SessionMessage(msg, queue)
         self.message_queue.append(message)
 
     def pop_flash(self, queue=''):
+        """Retrieve a list of messages for a given queue.
+
+        Messages are removed from the database after they were retrieved.
+
+        Args:
+            ``queue``: A specific queue from which the messages should be
+            fetched. If not specified, the default queue is used."""
         messages = self.peek_flash(queue)
         for message in messages:
             DBSession.delete(message)
         return messages
 
     def peek_flash(self, queue=''):
+        """Same as :meth:`pop_flash` but does not delete elements."""
         return filter(lambda m: m.queue == queue, self.message_queue)
 
-    def new_csrf_token(self):
-        token = os.urandom(20).encode('hex')
-        self.csrf_token = token
-        return self.csrf_token
-
-    def get_csrf_token(self):
-        return self.csrf_token
 
     def __getitem__(self, key):
-        return self._additional_data.__getitem__(key)
+        return self.additional_data.__getitem__(key)
 
     def get(self, key, default=None):
-        return self._additional_data.get(key, default)
+        return self.additional_data.get(key, default)
 
+    @mutated_additional_data
     def __delitem__(self, key):
-        return self._additional_data.__delitem__(key)
+        return self.additional_data.__delitem__(key)
 
+    @mutated_additional_data
     def __setitem__(self, key, value):
-        return self._additional_data.__setitem__(key, value)
+        return self.additional_data.__setitem__(key, value)
 
     def keys(self):
-        return self._additional_data.keys()
+        return self.additional_data.keys()
 
     def values(self):
-        return self._additional_data.values()
+        return self.additional_data.values()
 
     def items(self):
-        return self._additional_data.items()
+        return self.additional_data.items()
 
     def iterkeys(self):
-        return self._additional_data.iterkeys()
+        return self.additional_data.iterkeys()
 
     def itervalues(self):
-        return self._additional_data.itervalues()
+        return self.additional_data.itervalues()
 
     def iteritems(self):
-        return self._additional_data.iteritems()
+        return self.additional_data.iteritems()
 
+    @mutated_additional_data
     def clear(self):
-        return self._additional_data.clear()
+        return self.additional_data.clear()
 
+
+    @mutated_additional_data
     def update(self, d):
-        return self._additional_data.update(d)
+        return self.additional_data.update(d)
 
+    @mutated_additional_data
     def setdefault(self, key, default=None):
-        return self._additional_data.setdefault(key, default)
+        return self.additional_data.setdefault(key, default)
 
+    @mutated_additional_data
     def pop(self, k, *args):
-        return self._additional_data.pop(k, *args)
+        return self.additional_data.pop(k, *args)
 
+    @mutated_additional_data
     def popitem(self):
-        return self._additional_data.popitem()
+        return self.additional_data.popitem()
 
     def __len__(self):
-        return self._additional_data.__len__()
+        return self.additional_data.__len__()
 
     def __iter__(self):
-        return self._additional_data.__iter__()
+        return self.additional_data.__iter__()
 
     def __contains__(self, key):
         return self._additional_data.__contains__(key)
 
     def _set_cookie(self, request, response):
-        if not self._cookie_on_exception and \
-            getattr(self.request, 'exception', None):
-            return False  # don't set a cookie during exceptions
-        if len(self._cookie) > 4064:
-            raise ValueError("Cookie value is too long to store (%s bytes)"
-                             % len(self._cookie))
-        if hasattr(response, 'set_cookie'):
-            set_cookie = response.set_cookie
+        """A request callback to set (or delete) a cookie.
+
+        On an outgoing request a cookie is either set or deleted.
+        Largely inspired by
+        :meth:`pyramid.session.UnencryptedCookieSessionFactoryConfig._set_cookie`
+        with some added extensions for cookie deletion.
+        """
+        if not self._delete_cookie:
+            if not self._cookie_on_exception and \
+                getattr(self.request, 'exception', None):
+                return False  # don't set a cookie during exceptions
+            if len(self._cookie) > 4064:
+                raise ValueError("Cookie value is too long to store (%s bytes)"
+                                 % len(self._cookie))
+            if hasattr(response, 'set_cookie'):
+                set_cookie = response.set_cookie
+            else:
+                def set_cookie(*args, **kwargs):
+                    tmp_response = Response()
+                    tmp_response.set_cookie(*args, **kwargs)
+                    response.headerlist.append(tmp_response.headerlist[-1])
+
+            log.debug("Setting cookie %s with value %s for session with id %s"
+                      % (self._cookie_name, self._cookie, self.id))
+            set_cookie(
+                self._cookie_name,
+                value=self._cookie,
+                max_age=self._cookie_max_age,
+                path=self._cookie_path,
+                domain=self._cookie_domain,
+                secure=self._cookie_secure,
+                httponly=self._cookie_httponly)
         else:
-            def set_cookie(*args, **kwargs):
-                tmp_response = Response()
-                tmp_response.set_cookie(*args, **kwargs)
-                response.headerlist.append(tmp_response.headerlist[-1])
-
-        log.debug("Setting cookie %s with value %s for session with id %s" % (self._cookie_name, self._cookie, self.id))
-        set_cookie(
-            self._cookie_name,
-            value=self._cookie,
-            max_age=self._cookie_max_age,
-            path=self._cookie_path,
-            domain=self._cookie_domain,
-            secure=self._cookie_secure,
-            httponly=self._cookie_httponly)
-
+            if hasattr(response, 'unset_cookie'):
+                unset = response.unset_cookie
+            else:
+                def unset(*args, **kwargs):
+                    tmp_response = Response()
+                    tmp_response.set_cookie(*args, **kwargs)
+                    response.headerlist.append(tmp_response.headerlist[-1])
+            log.debug("Deleting cookie %s from session id %s"
+                      % (self._cookie_name, self.id))
+            unset(self._cookie_name)
 
     def configure(self, cookie, on_exception, secure, httponly, path, name,
                   max_age, domain):
@@ -303,7 +495,46 @@ class Session(Base):
         self._cookie = cookie
 
 
+class SessionMessage(Base):
+    """A single message from a specific queue and a specific session.
+
+    Attrs:
+        ``id``: ID of the message. Only needed as primary key
+
+        ``session_id``: Foreign key of the ``session.id`` column.
+
+        ``message``: String with the message to display to the user.
+
+        ``queue``: The queue to which the message belongs. Default: ``''``
+    """
+    __tablename__ = 'session_message'
+
+    id = Column('id', Integer, primary_key=True)
+    session_id = Column('session_id', Text, ForeignKey('session.id'))
+    message = Column('message', Text, nullable=False)
+    queue = Column('queue', Text, default='')
+
+    def __init__(self, msg, queue=''):
+        self.message = msg
+        self.queue = queue
+
+    def __str__(self):
+        return unicode(self).encode("utf-8")
+
+    def __unicode__(self):
+        return self.message
+
+
 def get_session(request):
+    """Session factory for use in app configuration.
+
+    Usage:
+
+    .. code-block:: python
+
+        from mtc3.models.session import get_session
+        config = Configurator(session_factory=get_session)
+    """
 
     on_exception, secure, httponly, path, name, secret, \
         duration, max_age, domain = get_cookie_settings(request)
@@ -318,7 +549,7 @@ def get_session(request):
             raise ValueError("Invalid session hash!")
         try:
             session = DBSession.query(Session)\
-                .filter(Session.id == session_id).one()
+                .filter(Session._id == session_id).one()
         except NoResultFound:
             raise ValueError("No session in database!")
 
@@ -332,32 +563,58 @@ def get_session(request):
         DBSession.add(session)
     session.configure(cookie, on_exception, secure, httponly, path, name,
                       max_age, domain)
-    session.message_queue
     request.add_response_callback(session._set_cookie)
     log.debug("Returning session with id %s for path %s" % (session.id, request.path))
     return session
 
 
 def create_session(secret, request):
+    """For a secret and a request create a new session and cookie.
+
+    Args:
+        ``secret``: A unicode string with the configured secret.
+
+        ``request``: The current request.
+
+    Returns:
+        A tuple (``session``, ``cookie``) where ``session`` is of type
+        :class:`Session` and ``cookie`` is the cookie value which should be
+        set on the client side cookie."""
     session = Session(request)
-    hash = calc_digest(secret, session.id, session.created)
-    cookie = ":".join([hash, session.id, str(session.created)])
+    hash_ = calc_digest(secret, session.id, session.created)
+    cookie = ":".join([hash_, session.id, str(session.created)])
     return session, cookie
 
 
 def calc_digest(secret, session_id, timestamp):
-    hash = hmac.new(secret, session_id + str(timestamp), digestmod=sha512)
-    return hash.hexdigest()
+    """Calculate a signature in the form of an HMAC for the cookie.
+
+    Args:
+        ``secret``: Configured secret for session signature.
+
+        ``session_id``: The id of the user's session.
+
+        ``timestamp``: An int denoting the :class:`Session.created <Session>` value.
+
+    Returns:
+        A hex-string with the calculated HMAC hash.
+    """
+    hash_ = hmac.new(secret, session_id + str(timestamp), digestmod=sha512)
+    return hash_.hexdigest()
 
 
 def get_cookie_settings(request):
+    """Retrieve settings from configuration.
+
+    Only mandatory setting: ``session.secret``.
+    """
     settings = request.registry.settings
     on_exception = settings.get('session.cookie_on_exception', True)
     secure = settings.get('session.cookie_secure', False)
-    httponly = settings.get('session.cookie_httponly')
+    httponly = settings.get('session.cookie_httponly', True)
     path = settings.get('session.cookie_path', '/')
     name = settings.get('session.cookie_name', 'session')
-    secret = settings.get('session.secret')
+    secret = settings['session.secret']
     duration = settings.get('session.duration', 3600)
     max_age = settings.get('session.max_age', None)
     domain = settings.get('session.domain', None)

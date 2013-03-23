@@ -1,5 +1,5 @@
-pyramid
-SQLAlchemy
+pyramid >= 1.4
+SQLAlchemy >= 0.8
 transaction
 pyramid_tm
 pyramid_debugtoolbar
@@ -8,3 +8,6 @@ waitress
 Markdown
 Requests
 MarkupSafe
+webhelpers
+dogpile.cache
+pylibmc

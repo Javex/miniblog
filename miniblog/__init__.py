@@ -3,7 +3,7 @@ from pyramid.authentication import AuthTktAuthenticationPolicy
 from pyramid.authorization import ACLAuthorizationPolicy
 from sqlalchemy import engine_from_config
 
-from miniblog.models import DBSession, Base, userfinder, get_session
+from miniblog.models import DBSession, Base, userfinder, get_session, cache
 
 
 def main(global_config, **settings):
@@ -12,6 +12,7 @@ def main(global_config, **settings):
     engine = engine_from_config(settings, 'sqlalchemy.')
     DBSession.configure(bind=engine)
     Base.metadata.bind = engine
+    cache.configure_from_config(settings, 'dogpile.cache.')
     authn_policy = AuthTktAuthenticationPolicy(settings['auth_secret'],
                                                hashalg='sha512',
                                                callback=userfinder)
@@ -24,11 +25,12 @@ def main(global_config, **settings):
     config.set_authorization_policy(authz_policy)
     config.add_static_view('static', 'static', cache_max_age=3600)
     config.add_route('home', '/')
-    config.add_route('home_paged', '/page/{num}')
+    config.add_route('home_paged', '/page/{page}')
     config.add_route('add_entry', '/add')
     config.add_route('manage_categories', '/categories')
     config.add_route('delete_category', '/categories/delete/{name_}')
     config.add_route('view_entry', '/entry/{id_}')
+    config.add_route('delete_entry', '/entry/{id_}/delete')
     config.add_route('view_categories', '/category/{id_}')
     config.add_route('about', '/about')
     config.add_route('search', '/search')

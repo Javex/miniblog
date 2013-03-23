@@ -14,8 +14,11 @@ from sqlalchemy.orm import subqueryload
 import transaction
 from webob.multidict import MultiDict
 import logging
+from webhelpers.paginate import Page, PageURL_WebOb
+from functools import partial
 
-from miniblog.models import DBSession, Entry, Category
+from miniblog.models import DBSession, Entry, Category, get_recent_posts, \
+    get_categories
 from miniblog.forms import EntryForm, CategoryForm
 
 log = logging.getLogger(__name__)
@@ -34,19 +37,21 @@ class BaseView(object):
 
     @reify
     def recent(self):
-        recent_entries = DBSession.query(Entry)\
-            .order_by(desc(Entry.entry_time))\
-            .all()[:7]
+        recent_entries = get_recent_posts()
         return recent_entries
 
     @view_config(route_name='home', renderer='entries.mako')
     @view_config(route_name='home_paged', renderer='entries.mako')
     def home(self):
-        page = int(self.request.matchdict.get('num', 1))
+        current_page = int(self.request.matchdict.get('page', 1))
         all_entries = DBSession.query(Entry)\
-            .order_by(desc(Entry.entry_time))\
-            .all()[(page - 1) * 5:page * 5 + 5]
-        return {'entries': all_entries}
+            .order_by(desc(Entry.entry_time))
+        log.debug("Current page: %i" % current_page)
+        page_url = partial(self.request.route_url, 'home_paged')
+        page = Page(all_entries, page=current_page, items_per_page=5,
+             item_count=all_entries.count(),
+             url=page_url)
+        return {'entries': page}
 
     @view_config(route_name='view_entry', renderer='entry.mako')
     def view_entry(self):
@@ -102,6 +107,15 @@ class BaseView(object):
 
 class AdminView(BaseView):
 
+    @view_config(route_name='delete_entry', permission='edit')
+    def delete_entry(self):
+        entry_id = self.request.matchdict["id_"]
+        entry = DBSession.query(Entry).filter(Entry.id == entry_id).one()
+        DBSession.delete(entry)
+        get_categories.invalidate()
+        get_recent_posts.invalidate()
+        return HTTPFound(location=self.request.route_url('home'))
+
     @view_config(route_name='manage_categories', renderer='categories.mako',
                  permission='edit')
     def manage_categories(self):
@@ -109,6 +123,7 @@ class AdminView(BaseView):
         if self.request.method == 'POST':
             category = Category(form.data['name'])
             DBSession.add(category)
+            get_categories.invalidate()
             return HTTPFound(location=self.request.route_url('manage_categories'))
         categories = DBSession.query(Category).all()
         return {'form': form, 'categories': categories}
@@ -119,6 +134,7 @@ class AdminView(BaseView):
         form_data = MultiDict(self.request.session.get("add_entry_form", {}))
         form_data.update(self.request.POST)
         form = EntryForm(form_data)
+        form.category.choices = [('', ' - None - ')] + [(name[0], name[0]) for name in get_categories()]
         if self.request.method == 'POST':
             if not form.validate():
                 for field, errors in form.errors.items():
@@ -131,9 +147,12 @@ class AdminView(BaseView):
                 category = DBSession.query(Category)\
                     .filter(Category.name == form.data["category"]).one()
                 entry.category = category
-            del self.request.session["add_entry_form"]
+            if "add_entry_form" in self.request.session:
+                del self.request.session["add_entry_form"]
             DBSession.add(entry)
             DBSession.flush()
+            get_categories.invalidate()
+            get_recent_posts.invalidate()
             return HTTPFound(location=self.request.route_url('view_entry', id_=entry.id))
             # add the entry
         return {'form': form}
@@ -151,4 +170,3 @@ class AdminView(BaseView):
         else:
             DBSession.delete(category)
         return HTTPFound(location=self.request.route_url('manage_categories'))
-

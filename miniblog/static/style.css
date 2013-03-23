@@ -15,6 +15,10 @@
 	padding: 0;
 }
 
+div.clr {
+	clear:both;
+}
+
 a {
 	color: #0D8691;
 	text-decoration: underline;
@@ -74,6 +78,16 @@ p {
 
 ul {
 	margin-bottom: 1.75em;
+}
+
+#nav li#login-wrap {
+	float:right;
+	width: 46px;
+	height: 50px;
+}
+
+#nav li#login-wrap > a {
+	display:none;
 }
 
 img#signin {
@@ -277,11 +291,11 @@ li.category_list a.delete {
 	position: absolute;
 	top: 0;
 	left: 0;
-	padding: 0 32px 0 32px;
-	width: 1116px;
+	padding: 0 0 0 32px;
+	width: 1148px;
 	height: 50px;
 	line-height: 50px;
-	margin: 0 0 32px 0;
+	margin: 0;
 	background: #444444;
 	border-bottom: solid 1px #11B8C1;
 	border-top: solid 1px #606060;
@@ -344,7 +358,7 @@ li.category_list a.delete {
 
 #sidebar1 {
 	width: 164px;
-	margin: 0 0 0 764px;
+	float: left;
 	padding: 0;
 }
 
@@ -352,4 +366,21 @@ li.category_list a.delete {
 	width: 164px;
 	float: right;
 	padding: 0;
+}
+
+#sidebar12 {
+	width: 354px;
+	padding: 0;
+	float: right;
+}
+
+#sidebar_wrap {
+	width: 352px;
+	margin: 0 0 0 764px;
+	padding: 0;
+}
+
+span.pretty-date {
+	font-size: 0.8em;
+	font-style: italic;
 }

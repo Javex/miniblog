@@ -17,6 +17,9 @@ requires = [
     'Markdown',
     'Requests',
     'MarkupSafe',
+    'webhelpers',
+    'dogpile.cache',
+    'pylibmc',
     ]
 
 setup(name='miniblog',
