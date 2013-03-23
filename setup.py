@@ -20,6 +20,7 @@ requires = [
     'webhelpers',
     'dogpile.cache',
     'pylibmc',
+    'wtforms',
     ]
 
 setup(name='miniblog',

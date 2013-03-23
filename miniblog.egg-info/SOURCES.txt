@@ -1,5 +1,6 @@
 CHANGES.txt
 MANIFEST.in
+README.md
 development.ini
 production.ini
 setup.cfg
@@ -32,7 +33,9 @@ miniblog/static/transparent.gif
 miniblog/static/images/Cross-32.png
 miniblog/static/images/pic1.jpg
 miniblog/static/images/plain_sign_in_black.png
+miniblog/static/images/red_asterisk.png
 miniblog/static/images/search.gif
+miniblog/templates/404.mako
 miniblog/templates/about.mako
 miniblog/templates/add.mako
 miniblog/templates/categories.mako

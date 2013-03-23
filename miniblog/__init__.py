@@ -12,6 +12,7 @@ def main(global_config, **settings):
     engine = engine_from_config(settings, 'sqlalchemy.')
     DBSession.configure(bind=engine)
     Base.metadata.bind = engine
+    Base.metadata.create_all(engine)
     cache.configure_from_config(settings, 'dogpile.cache.')
     authn_policy = AuthTktAuthenticationPolicy(settings['auth_secret'],
                                                hashalg='sha512',

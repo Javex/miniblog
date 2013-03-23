@@ -73,11 +73,19 @@ def pretty_date(time=False):
 
 @cache.cache_on_arguments()
 def get_categories():
+    """Get a list of all categories. Uses caching for quicker results."""
     return DBSession.query(Category.name).all()
 
 
 @cache.cache_on_arguments()
 def get_recent_posts(count=7):
+    """Get a list of recent posts. Uses caching for quicker results.
+
+    Args:
+        ``count``: Number of recent posts to retrieve. Default: 7
+
+    Returns:
+        A list of :class:`Entry` which are the most recent posts."""
     return DBSession.query(Entry)\
         .order_by(desc(Entry.entry_time))[:count]
 
@@ -91,7 +99,23 @@ def userfinder(id_, request):
 
 
 class Entry(Base):
-    """A single blog entry."""
+    """A single blog entry.
+
+    Attrs:
+        ``id``: ID of the entry, used in URLs for instance.
+
+        ``title``: The title of the entry, rendered as ``<h1>``-Tag in
+        template.
+
+        ``_text``: The raw markdown text. Use ``Entry.text`` instead.
+
+        ``entry_time``: The the entry was made.
+
+        ``category_name``: Primary key of :class:`Category` and the name of
+        the category this article belongs to.
+
+        ``category``: Full access to the associated :class:`Category`.
+    """
     __tablename__ = 'entry'
     id = Column(Integer, primary_key=True)
     title = Column(Text, unique=True, nullable=False)
@@ -108,6 +132,11 @@ class Entry(Base):
 
     @property
     def text(self):
+        """A markdown rendered html string as the article text.
+
+        The markdown text from the database is first escaped and then parsed
+        by markdown. Is a property, thus usage is ``entry.text`` _not_
+        ``entry.text()``"""
         import markdown
         from markupsafe import escape
         return markdown.markdown(escape(self._text))
@@ -118,11 +147,16 @@ class Entry(Base):
 
     @property
     def pretty_date(self):
+        """Return a date string according to the :func:pretty_date function."""
         return pretty_date(self.entry_time)
 
 
 class Category(Base):
-    """A category in the blog."""
+    """A category in the blog.
+
+    Attrs:
+        ``name``: The name of the category.
+    """
     __tablename__ = 'category'
     name = Column(Text, primary_key=True)
 

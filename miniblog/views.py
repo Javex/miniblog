@@ -25,12 +25,15 @@ from miniblog.forms import EntryForm, CategoryForm
 log = logging.getLogger(__name__)
 
 class BaseView(object):
+    """View for all user related stuff."""
 
     def __init__(self, request):
         self.request = request
 
     @reify
     def categories(self):
+        """A list of :class:`miniblog.models.Category` that have entries
+        attached."""
         categories = DBSession.query(Category)\
             .filter(exists().where(Category.name == Entry.category_name))\
             .all()
@@ -38,6 +41,8 @@ class BaseView(object):
 
     @reify
     def recent(self):
+        """A list of recent posts as returned by
+        :func:`miniblog.models.get_recent_posts`."""
         recent_entries = get_recent_posts()
         return recent_entries
 
@@ -116,6 +121,17 @@ class BaseView(object):
 
 
 class AdminView(BaseView):
+    """View for all administration stuff.
+
+    Everything with a view config needs to have the permission ``edit``
+    or it might expose administrative functions to the end user:
+
+    .. code-block:: python
+
+        @view_config(route_name='...', permission='edit')
+        def do_admin_stuff(self):
+            ...
+    """
 
     @view_config(route_name='delete_entry', permission='edit')
     def delete_entry(self):
