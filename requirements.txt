@@ -11,6 +11,7 @@ pyramid==1.4
 pyramid-debugtoolbar==1.0.4
 pyramid-tm==0.7
 repoze.lru==0.6
+requests==1.1.0
 transaction==1.4.1
 virtualenv==1.9.1
 zope.sqlalchemy==0.7.2
