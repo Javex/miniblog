@@ -29,7 +29,7 @@ The installation depends on your desired setup. Generally speaking, you should
 check out the `Deployment <http://docs.pylonsproject.org/projects/pyramid_cookbook/en/latest/deployment/index.html>`_
 chapter in the Pyramid Cookbook for some instructions. The instructions here
 refer to an installation with `Nginx <http://wiki.nginx.org/Main>`_,
-`Paste <http://pythonpaste.org/>`_ and supervisord.
+`Paste <http://pythonpaste.org/>`_ and `supervisord <http://supervisord.org/>`.
 
 Install the application
 -----------------------
@@ -48,7 +48,6 @@ the application in ``env``.
     $ cd miniblog
     $ virtualenv env
     $ . env/bin/activate
-    $ python setup.py build
     $ python setup.py develop
     $ cp production.ini.sample production.ini
 
@@ -117,7 +116,7 @@ because we will be using it behind nginx to actually serve our application.
 
 .. code-block:: text
 
-   pip install pastescript
+   pip install pastescript cherrypy weberror 
    paster serve --pid-file=paster_5000.pid production.ini http_port=5000
 
 .. note::
@@ -134,7 +133,81 @@ error output and if not, you now have a working installation.
 But you might not want to run ``paster`` from the console all the time, so you
 should check out the next section.
 
-Using Supervisord to Manager Paster
+Using Supervisord to Manage Paster
 -----------------------------------
+So you have tested the application and verified it is running and working?
+Good, because now everything is set for the final step: Installing the
+application as a service so it is run automatically.
 
-[...]
+The process described here uses Supervisor on an ArchLinux system with a
+systemd unit file for the service. Depending on your system you might need a
+different setup (e.g. if no systemd is present). Some examples of how to run
+Supervisor on any of these systems can be found on `GitHub <https://github.com/Supervisor/initscripts>`_.
+
+First of all, you need to create some directories and install Supervisor:
+
+.. code-block:: console
+
+    $ mkdir log tmp
+    $ pacman -S supervisor
+    $ chown -R http:http /var/www/miniblog
+
+The last commands sets the permission for the folder to the webserver's
+user. You could also create a user just for this application, the webserver
+only needs the ability to serve the static files.
+
+Now we create our `supervisord.conf`:
+
+.. literalinclude:: ../samples/supervisord.conf.sample
+    :language: ini
+    :linenos:
+
+Change the username ``user=http`` to your webserver's username (or whatever you
+chose aboe). That should be the only change required to get the server running. 
+However, to improve performance or adjust behavior, you might want to finetune 
+some settings.
+
+To make this startable by systemd we take ArchLinux's usual systemd file and
+modify it slightly:
+
+.. literalinclude:: ../samples/miniblog.service.sample
+    :language: ini
+    :linenos:
+
+For ArchLinux now do:
+
+.. code-block:: console
+
+    $ cd /etc/systemd/system
+    $ # Insert miniblog.service file here
+    $ systemctl enable miniblog
+    $ systemctl start miniblog
+
+If everything went alright, you should now be able to access your site. 
+That's it, the software is installed. Browse it a bit to make sure everything
+worked, add some entries and get used to the site. For usage guidance on how
+to use this software see `Usage`_.
+
+However, if you have trouble, look no further and head to the 
+`Troubleshooting`_ section.
+
+Troubleshooting
+---------------
+
+If you have issues with reaching the installed site after having followed this
+tutorial, you first have to figure out where the problem lies. If it was
+before `Quick-Test with paster`_ you should try to launch a single, 
+non-daemonized session there and try to trace the error. Also make sure to
+check the Nginx log file (``/var/log/nginx/miniblo_error.log``).
+
+If your problems start with using Supervisor then you should take a look at
+the files in ``/var/www/miniblog/log``. There you might find some information.
+If these files do not exists (there should be one for supervisord and as many
+application logs as you have processes configured) then you might have a
+permission issue.
+
+
+Usage
+-----
+
+Some docs on the usage....
