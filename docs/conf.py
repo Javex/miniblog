@@ -293,7 +293,3 @@ epub_copyright = u'2013, Florian Rüchel'
 
 # Allow duplicate toc entries.
 #epub_tocdup = True
-
-
-# Example configuration for intersphinx: refer to the Python standard library.
-intersphinx_mapping = {'http://docs.python.org/': None}

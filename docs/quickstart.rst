@@ -3,25 +3,14 @@ Quickstart
 ==========
 
 To just get started you first need to install and then configure MiniBlog but
-first a little heads-up. This software relies on the Pyramid Framework and 
+first a little heads-up. This software relies on the Pyramid Framework and
 uses some libraries and has dependencies to improve performance or recduce
-the need for own code. This includes caching through :mod:`dogpile.cache`
-which introduces the requirement for `Memcached <http://memcached.org/>`_.
-Take a look at the `Prerequisites`_ first.
+the need for own code. For a more thorough explanation see [...]
 
-Prerequisites
-=============
-Some dependencies are outside of Python and can thus not be automatically
-installed by a script. Refer to your distributions documentation and the
-individual projects documentation for help on how to install them.
+.. todo::
+    Write & link exmplanation for libraries...
 
-The following libraries & programs need to be installed for MiniBlog:
-
-    * `Memcached <http://memcached.org/>`_
-    * `libmemcached <http://libmemcached.org/libMemcached.html>`_
-
-Once these libraries are installed, you are ready to start with the
-`Installation`_.
+Let's start with the installation.
 
 Installation
 ============
@@ -29,7 +18,7 @@ The installation depends on your desired setup. Generally speaking, you should
 check out the `Deployment <http://docs.pylonsproject.org/projects/pyramid_cookbook/en/latest/deployment/index.html>`_
 chapter in the Pyramid Cookbook for some instructions. The instructions here
 refer to an installation with `Nginx <http://wiki.nginx.org/Main>`_,
-`Paste <http://pythonpaste.org/>`_ and `supervisord <http://supervisord.org/>`.
+`Paste <http://pythonpaste.org/>`_ and `supervisord <http://supervisord.org/>`_.
 
 Install the application
 -----------------------
@@ -46,6 +35,7 @@ the application in ``env``.
     $ cd /var/www
     $ git clone https://github.com/Javex/miniblog.git
     $ cd miniblog
+    $ mkdir cache
     $ virtualenv env
     $ . env/bin/activate
     $ python setup.py develop
@@ -96,7 +86,7 @@ serving the application to the internet.
 Configure nginx
 ---------------
 
-The ``Nginx`` configuration is mostly taken from the Pyramid Cookbook but is 
+The ``Nginx`` configuration is mostly taken from the Pyramid Cookbook but is
 modified to force ssl (you may alter that if you do not want/need HTTPS).
 
 .. literalinclude:: ../samples/nginx.conf.sample
@@ -104,7 +94,7 @@ modified to force ssl (you may alter that if you do not want/need HTTPS).
     :linenos:
 
 Of course, you need to adjust all paths and possibly create or request a
-certificate (or remove all SSL settings). 
+certificate (or remove all SSL settings).
 
 After installing the configuration, restart Nginx.
 
@@ -116,11 +106,11 @@ because we will be using it behind nginx to actually serve our application.
 
 .. code-block:: text
 
-   pip install pastescript cherrypy weberror 
+   pip install pastescript cherrypy weberror
    paster serve --pid-file=paster_5000.pid production.ini http_port=5000
 
 .. note::
-    
+
     We don't daemonize here on purpose: We wan't to see how the application
     launches and fix any errors that might occur.
 
@@ -163,8 +153,8 @@ Now we create our `supervisord.conf`:
     :linenos:
 
 Change the username ``user=http`` to your webserver's username (or whatever you
-chose aboe). That should be the only change required to get the server running. 
-However, to improve performance or adjust behavior, you might want to finetune 
+chose aboe). That should be the only change required to get the server running.
+However, to improve performance or adjust behavior, you might want to finetune
 some settings.
 
 To make this startable by systemd we take ArchLinux's usual systemd file and
@@ -183,20 +173,19 @@ For ArchLinux now do:
     $ systemctl enable miniblog
     $ systemctl start miniblog
 
-If everything went alright, you should now be able to access your site. 
+If everything went alright, you should now be able to access your site.
 That's it, the software is installed. Browse it a bit to make sure everything
 worked, add some entries and get used to the site. For usage guidance on how
 to use this software see `Usage`_.
 
-However, if you have trouble, look no further and head to the 
+However, if you have trouble, look no further and head to the
 `Troubleshooting`_ section.
 
 Troubleshooting
 ---------------
-
 If you have issues with reaching the installed site after having followed this
 tutorial, you first have to figure out where the problem lies. If it was
-before `Quick-Test with paster`_ you should try to launch a single, 
+before `Quick-Test with paster`_ you should try to launch a single,
 non-daemonized session there and try to trace the error. Also make sure to
 check the Nginx log file (``/var/log/nginx/miniblo_error.log``).
 
@@ -209,5 +198,18 @@ permission issue.
 
 Usage
 -----
+To get started bloggin, only one minor step is needed. MiniBlog uses
+`Persona <https://login.persona.org/>`_ for login, thus you need to
+create a Persona login. This is actually extremely simple: Hover over
+the grey menubar in the right corner. You will see a "Login" entry appear.
+Click it and a Persona window will appear. Follow the instructions and
+create an account for the email address you entered in your ``production.ini``.
+It is vital that these addresses match as they will allow you to log in.
 
-Some docs on the usage....
+After completing the process, you should now see new entries in the menu, e.g.
+"Add Entry". Hover over to the right: It should now display "Logout". You are
+now all set. Play around in the menu and start blogging.
+
+MiniBlog provides a high level of customization as it exposes the configuration
+possibilities of its underlying libraries, especially :mod:`dogpile.cache` and
+:mod:`sqlalchemy`.

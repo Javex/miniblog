@@ -19,7 +19,6 @@ requires = [
     'MarkupSafe',
     'webhelpers',
     'dogpile.cache',
-    'pylibmc',
     'wtforms',
     ]
 
