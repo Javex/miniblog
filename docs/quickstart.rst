@@ -259,7 +259,7 @@ If you have issues with reaching the installed site after having followed this
 tutorial, you first have to figure out where the problem lies. If it was
 before `Quick-Test with paster`_ you should try to launch a single,
 non-daemonized session there and try to trace the error. Also make sure to
-check the Nginx log file (``/var/log/nginx/miniblo_error.log``).
+check the Nginx log file (``/var/log/nginx/miniblog_error.log``).
 
 If your problems start with using Supervisor then you should take a look at
 the files in ``/var/www/miniblog/log``. There you might find some information.
@@ -285,3 +285,19 @@ now all set. Play around in the menu and start blogging.
 MiniBlog provides a high level of customization as it exposes the configuration
 possibilities of its underlying libraries, especially :mod:`dogpile.cache` and
 :mod:`sqlalchemy`.
+
+Finally, you might want to create the about page: On this page you can talk a
+bit about yourself and why this blog exists & what it's about. For this, open
+``miniblog/templates/about.mako`` and edit the ``body`` block:
+
+.. code-block:: html
+
+    <%block name="body">
+    Your content here...
+    </%block>
+
+You can use any HTML you like within that block and you also have access to
+some variables available to a Mako template, especially Pyramids request
+via ``view.request``. No probably won't need that so just use plain HTML and
+start rambling.
+
