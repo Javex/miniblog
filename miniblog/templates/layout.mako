@@ -95,6 +95,9 @@
 						<li>
 							<a href="${view.request.route_url('about')}">About</a>
 						</li>
+						<li>
+						    <a href="${view.request.route_url('view_categories')}">Categories</a>
+						</li>
 						% if has_permission("edit", view.request.context, view.request):
 						<li>
 							<a href="${view.request.route_url('add_entry')}">Add Entry</a>
@@ -146,7 +149,7 @@
 						    last
 						    % endif
 						    ">
-							    <a href="${view.request.route_url('view_categories', id_=category.name)}">
+							    <a href="${view.request.route_url('view_category', id_=category.name)}">
 								    ${category.name}
 							    </a>
 						    </li>

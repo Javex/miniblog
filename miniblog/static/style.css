@@ -98,7 +98,7 @@ img#signin {
 	cursor: pointer;
 }
 
-#content span.date {
+span.header-date {
 	position: absolute;
 	margin-top: -30px;
 }

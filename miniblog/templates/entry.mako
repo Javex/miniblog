@@ -12,7 +12,7 @@
         </a>
         % endif
     </h1>
-	<span class="date">Posted on: ${entry.entry_time.strftime('%Y-%m-%d %H:%M:%S')}</span>
+	<span class="date header-date">Posted on: ${entry.entry_time.strftime('%Y-%m-%d %H:%M:%S')}</span>
 	<div class="entry-wrap">
         % if trim:
             ${entry.trimmed_text|n}

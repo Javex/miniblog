@@ -68,11 +68,11 @@ class BaseView(object):
                                "possibly deleted.")
         return {'entry': entry}
 
-    @view_config(route_name='view_categories', renderer='entries.mako')
-    def view_categories(self):
+    @view_config(route_name='view_category', renderer='entries.mako')
+    def view_category(self):
         current_page = int(self.request.matchdict.get('page', 1))
         id_ = self.request.matchdict['id_']
-        page_url = partial(self.request.route_url, 'view_categories')
+        page_url = partial(self.request.route_url, 'view_category')
         entries = DBSession.query(Entry).\
             filter(Entry.category_name == id_).\
             order_by(desc(Entry.entry_time))
@@ -84,6 +84,22 @@ class BaseView(object):
     @view_config(route_name='about', renderer='about.mako')
     def about(self):
         return {}
+
+    @view_config(route_name='view_categories', renderer='categories.mako')
+    def view_categories(self):
+        current_page = int(self.request.GET.get('page', 1))
+        last_entry = DBSession.query(Entry.entry_time).\
+                    filter(Entry.category_name == Category.name).\
+                    order_by(desc(Entry.entry_time)).\
+                    limit(1).\
+                    as_scalar()
+        categories = DBSession.query(Category, last_entry)
+
+        page_url = partial(self.request.route_url, 'view_categories')
+        page = Page(categories, page=current_page, items_per_page=20,
+                    item_count=categories.count(),
+                    url=page_url)
+        return {'categories': page}
 
 
     @view_config(route_name='search', renderer='search.mako')
@@ -151,7 +167,8 @@ class AdminView(BaseView):
         get_recent_posts.invalidate()
         return HTTPFound(location=self.request.route_url('home'))
 
-    @view_config(route_name='manage_categories', renderer='categories.mako',
+    @view_config(route_name='manage_categories',
+                 renderer='edit_categories.mako',
                  permission='edit')
     def manage_categories(self):
         form = CategoryForm(self.request.POST)
