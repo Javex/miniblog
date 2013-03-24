@@ -14,3 +14,5 @@ I wanted to build a blog software very quickly that only provides the most basic
  - Some optional additional pages
  
 Note: This is currently a development build and not ready for release.
+
+For more information refer to the [documentation](https://javex-miniblog.readthedocs.org/).

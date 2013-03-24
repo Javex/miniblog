@@ -1,3 +1,5 @@
+.. _quickstart:
+
 ==========
 Quickstart
 ==========
@@ -10,7 +12,77 @@ the need for own code. For a more thorough explanation see [...]
 .. todo::
     Write & link exmplanation for libraries...
 
-Let's start with the installation.
+
+Preface
+=======
+Before you start installing MiniBlog there are some things you might want to
+consider. If you are already sure you want to install MiniBlog, you can
+skip this part and start directly with the `Installation`_.
+
+You may not like some of the ways in which MiniBlog works. Some of these are
+actually easily customizable, so you can adjust these after initial setup.
+Others are builtin and require working on the actual source code.
+
+The following libraries and elements are used with MiniBlog:
+
+    * `SQLAlchemy <http://www.sqlalchemy.org/>`_
+    * `dogpile.cache <https://bitbucket.org/zzzeek/dogpile.cache>`_
+    * `Pyramid <http://www.pylonsproject.org/>`_
+    * `WTForms <http://wtforms.simplecodes.com/>`_
+    * `Markdown <http://daringfireball.net/projects/markdown/>`_
+    * `Persona Login <https://login.persona.org/>`_
+
+None of these requirements can actually be removed easily, but some can be
+modified, especially SQLAlchemy and dogpile.cache. The others you will just
+have to acceppt. The only ones that may get in your way while blogging are
+Markdown and Persona.
+
+Why choose Markdown?
+--------------------
+Markdown allows you to write text in a nice and structured way without
+thinking too much about HTML. It also provides an additional layer of
+security as it limits the ability to input HTML & other code.
+
+The main reason to use Markdown came from the requirement to write blog
+entries in an easy and quick way without risking any security
+problems (i.e. writing HTML by yourself). You might argue that since this
+is a blogging software for one person only, it might not be problematic in this
+case and you are probably right. The added security is considered a bonus
+feature among the ease of writing Markdown.
+
+However, if you *really* don't want Markdown, you can replace it. There is
+nothing that prevents you from replacing or removing it. See [...] for 
+detailed instructions.
+
+.. todo::
+    Write & link Markdown replacement instructions
+
+
+Why choose Persona?
+-------------------
+As a proof of concept for myself. When I started building this software I had
+recently seen a talk about Persona and now I wanted to try it. This seemed like
+the perfect opportunity because the site would not have any requirement for
+user management and thus the implementation would only require to hard code an
+email address to the configuration and let Persona do the rest.
+
+I tried it and I liked it. But you might not and so you should keep this in
+in mind: Persona is hardwired into the software and while replacing it is
+possible, it is neither easy nor supported. If, however, you want to go that
+way, you can take a look at [...].
+
+.. todo::
+    Write & link something that describes where Persona is used and what might
+    need replacement then.
+
+
+Summary
+-------
+If none of the above scares you (or you are willing to work out some
+modifications) then you are invited to start with MiniBlog's `Installation`_.
+Should you build something as a modification (e.g. replace Markdown or
+Persona), please let me know so I can think about intergrating it to
+this project.
 
 Installation
 ============
@@ -65,8 +137,8 @@ Also enter the following settings in ``[filter:weberror]``:
 For a complete documentation of the configuration process see [...]. There
 you will find all settings explained.
 
-The next step is very relevant for your applications *security*!
-You need to generate *two* keys: One for authentication and one
+The next step is very relevant for your applications **security**!
+You need to generate **two** keys: One for authentication and one
 for session. You can easily generate them from python with
 something like
 
@@ -75,7 +147,7 @@ something like
     import os
     os.urandom(20).encode("hex")
 
-Be sure to generate two _distinct_ keys and enter them into the ``auth_secret``
+Be sure to generate two *distinct* keys and enter them into the ``auth_secret``
 and ``session.secret`` in the ``[app:miniblog]`` section.
 
 Now you have configured your application completely. Once you start the
@@ -197,8 +269,8 @@ permission issue.
 
 
 Usage
------
-To get started bloggin, only one minor step is needed. MiniBlog uses
+=====
+To get started blogging, only one minor step is needed. MiniBlog uses
 `Persona <https://login.persona.org/>`_ for login, thus you need to
 create a Persona login. This is actually extremely simple: Hover over
 the grey menubar in the right corner. You will see a "Login" entry appear.
