@@ -19,6 +19,7 @@ import os
 from functools import wraps
 from sqlalchemy.sql.expression import desc
 from dogpile.cache import make_region
+import re
 
 
 log = logging.getLogger(__name__)
@@ -144,6 +145,13 @@ class Entry(Base):
     @text.setter
     def text(self, text):
         self._text = text
+
+    @property
+    def trimmed_text(self):
+        """Same as ``Entry.text`` but only the first two paragraphs."""
+        trimmed_paragraphs = re.findall(r'<p>(.*?)<\/p>', self.text)[:2]
+        return "".join(map(lambda p: '<p>%s</p>' % p, trimmed_paragraphs))
+
 
     @property
     def pretty_date(self):

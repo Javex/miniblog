@@ -4,7 +4,7 @@ from pyramid.response import Response
 from pyramid.view import view_config, notfound_view_config
 from pyramid.httpexceptions import HTTPFound, HTTPBadRequest, \
     HTTPInternalServerError, HTTPNotFound
-from pyramid.security import remember, forget
+from pyramid.security import remember, forget, authenticated_userid
 import requests
 from sqlalchemy import func
 from sqlalchemy.exc import DBAPIError
@@ -52,7 +52,6 @@ class BaseView(object):
         current_page = int(self.request.matchdict.get('page', 1))
         all_entries = DBSession.query(Entry)\
             .order_by(desc(Entry.entry_time))
-        log.debug("Current page: %i" % current_page)
         page_url = partial(self.request.route_url, 'home_paged')
         page = Page(all_entries, page=current_page, items_per_page=5,
              item_count=all_entries.count(),
@@ -71,9 +70,16 @@ class BaseView(object):
 
     @view_config(route_name='view_categories', renderer='entries.mako')
     def view_categories(self):
+        current_page = int(self.request.matchdict.get('page', 1))
         id_ = self.request.matchdict['id_']
-        category = DBSession.query(Category).options(subqueryload(Category.entries)).filter(Category.name == id_).one()
-        return {'entries': category.entries}
+        page_url = partial(self.request.route_url, 'view_categories')
+        entries = DBSession.query(Entry).\
+            filter(Entry.category_name == id_).\
+            order_by(desc(Entry.entry_time))
+        page = Page(entries, page=current_page, items_per_page=5,
+             item_count=entries.count(),
+             url=page_url)
+        return {'entries': page}
 
     @view_config(route_name='about', renderer='about.mako')
     def about(self):
@@ -105,6 +111,7 @@ class BaseView(object):
 
             if verification_data['status'] == 'okay':
                 # Log the user in
+                log.info("User %s logged in as Blog admin" % verification_data['email'])
                 headers = remember(self.request, verification_data['email'])
                 return Response(json.dumps(verification_data), headers=headers)
 
@@ -112,6 +119,8 @@ class BaseView(object):
 
     @view_config(route_name='logout')
     def logout(self):
+        user_mail = authenticated_userid(self.request)
+        log.info("User %s logged out" % user_mail)
         headers = forget(self.request)
         return Response(headers=headers)
 

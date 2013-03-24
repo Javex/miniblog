@@ -1,5 +1,5 @@
 <%inherit file="layout.mako" />
-<%def name="display_entry(entry)">
+<%def name="display_entry(entry, trim=True)">
 <% from pyramid.security import has_permission %>
 	<h1>
 	    <a href="${view.request.route_url('view_entry', id_=entry.id)}">${entry.title}</a>
@@ -14,7 +14,12 @@
     </h1>
 	<span class="date">Posted on: ${entry.entry_time.strftime('%Y-%m-%d %H:%M:%S')}</span>
 	<div class="entry-wrap">
-    	${entry.text|n}
+        % if trim:
+            ${entry.trimmed_text|n}
+            <a href="${view.request.route_url('view_entry', id_=entry.id)}">Read more...</a>
+        % else:
+            ${entry.text|n}
+        % endif
     </div>
 </%def>
 
@@ -23,7 +28,7 @@ ${entry.title} -
 </%block>
 
 <%block name="body">
-	${display_entry(entry)}
+	${display_entry(entry, False)}
     <div id="disqus_thread"></div>
     <script type="text/javascript">
         /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
