@@ -154,10 +154,20 @@ class AdminView(BaseView):
         categories = DBSession.query(Category).all()
         return {'form': form, 'categories': categories}
 
+    @view_config(route_name='edit_entry', renderer='add.mako',
+                 permission='edit')
     @view_config(route_name='add_entry', renderer='add.mako',
                  permission='edit')
     def add_entry(self):
-        form_data = MultiDict(self.request.session.get("add_entry_form", {}))
+        entry_id = self.request.matchdict.get("id_", 0)
+        if entry_id:
+            entry = DBSession.query(Entry).filter(Entry.id == entry_id).one()
+            form_data = MultiDict({'title': entry.title, 'text': entry._text,
+                                   'category': entry.category_name})
+            form_data.update(self.request.session.get("edit_entry_%i_form" % entry.id, {}))
+        else:
+            entry = None
+            form_data = MultiDict(self.request.session.get("add_entry_form", {}))
         form_data.update(self.request.POST)
         form = EntryForm(form_data)
         form.category.choices = [('', ' - None - ')] + [(name[0], name[0]) for name in get_categories()]
@@ -167,18 +177,30 @@ class AdminView(BaseView):
                 for field, errors in form.errors.items():
                     for error in errors:
                         self.request.session.flash('Field "%s" has the following error: "%s"' % (field, error))
-                self.request.session["add_entry_form"] = form.data
+                if entry:
+                    self.request.session["edit_entry_%i_form" % entry.id] = form.data
+                else:
+                    self.request.session["add_entry_form"] = form.data
                 return HTTPFound(location=self.request.route_url('add_entry'))
-            entry = Entry(form.data["title"], form.data["text"])
+
             if form.submit.data:
                 if "category" in form.data and form.data["category"]:
                     category = DBSession.query(Category)\
                         .filter(Category.name == form.data["category"]).one()
+                if not entry:
+                    new_entry = Entry(form.data["title"], form.data["text"])
+                    new_entry.category = category
+                    if "add_entry_form" in self.request.session:
+                        del self.request.session["add_entry_form"]
+                    DBSession.add(new_entry)
+                else:
+                    if "edit_entry_%i_form" \
+                            % entry.id in self.request.session:
+                        del self.request.session["edit_entry_%i_form"
+                                                 % entry.id]
+                    entry._text = form.data["text"]
+                    entry.title = form.data["title"]
                     entry.category = category
-                if "add_entry_form" in self.request.session:
-                    del self.request.session["add_entry_form"]
-                DBSession.add(entry)
-                # add the entry
                 DBSession.flush()
                 get_categories.invalidate()
                 get_recent_posts.invalidate()

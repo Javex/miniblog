@@ -32,6 +32,7 @@ def main(global_config, **settings):
     config.add_route('delete_category', '/categories/delete/{name_}')
     config.add_route('view_entry', '/entry/{id_}')
     config.add_route('delete_entry', '/entry/{id_}/delete')
+    config.add_route('edit_entry', '/entry/{id_}/edit')
     config.add_route('view_categories', '/category/{id_}')
     config.add_route('about', '/about')
     config.add_route('search', '/search')

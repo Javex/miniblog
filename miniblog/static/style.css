@@ -107,13 +107,13 @@ li.category_list {
 	line-height: 24px;
 }
 
-img.cross {
+img.header-icon {
 	width: 16px;
 	height: 16px;
 	vertical-align:middle;
 }
 
-li.category_list a.delete {
+a.clickable-icon {
 	text-decoration: none;
 }
 

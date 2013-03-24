@@ -4,8 +4,11 @@
 	<h1>
 	    <a href="${view.request.route_url('view_entry', id_=entry.id)}">${entry.title}</a>
 	    % if has_permission("edit", view.request.context, view.request):
-	    <a href="${view.request.route_url('delete_entry', id_=entry.id)}" class="delete">
-            <img class="cross" src="${view.request.static_url('miniblog:static/images/Cross-32.png')}">
+	    <a href="${view.request.route_url('delete_entry', id_=entry.id)}" class="clickable-icon" title="Delete Entry">
+            <img class="header-icon" src="${view.request.static_url('miniblog:static/images/Cross-32.png')}">
+        </a>
+        <a href="${view.request.route_url('edit_entry', id_=entry.id)}" class="clickable-icon" title="Edit Entry">
+            <img class="header-icon" src="${view.request.static_url('miniblog:static/images/Edit_32.png')}">
         </a>
         % endif
     </h1>

@@ -19,8 +19,8 @@
 		    last
 		% endif
         ">
-            <a class="delete" href="${view.request.route_url('delete_category', name_=category.name)}">
-                <img src="${view.request.static_url('miniblog:static/images/Cross-32.png')}" class="cross"/>
+            <a class="clickable-icon" href="${view.request.route_url('delete_category', name_=category.name)}">
+                <img src="${view.request.static_url('miniblog:static/images/Cross-32.png')}" class="header-icon"/>
             </a>
             ${category.name}
         </li>
