@@ -1,10 +1,10 @@
 <% from pyramid.security import authenticated_userid, has_permission %>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
-    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+    "https://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <!--
 
 	Design by Free CSS Templates
-	http://www.freecsstemplates.org
+	https://www.freecsstemplates.org
 	Released for free under a Creative Commons Attribution License
 
 	Name       : Temporary Issue
@@ -12,7 +12,7 @@
 	Released   : 20130222
 
 -->
-<html xmlns="http://www.w3.org/1999/xhtml">
+<html xmlns="https://www.w3.org/1999/xhtml">
 	<head>
 		<meta name="keywords" content="" />
 		<meta name="description" content="" />
@@ -21,8 +21,8 @@
 		<title>
 		<%block name="title" /> ${view.request.registry.settings["title"]}
 		</title>
-		<link href="http://fonts.googleapis.com/css?family=Arvo" rel="stylesheet" type="text/css" />
-		<link href="http://fonts.googleapis.com/css?family=Bitter" rel="stylesheet" type="text/css" />
+		<link href="https://fonts.googleapis.com/css?family=Arvo" rel="stylesheet" type="text/css" />
+		<link href="https://fonts.googleapis.com/css?family=Bitter" rel="stylesheet" type="text/css" />
 		<link rel="stylesheet" type="text/css" href="/static/style.css" />
 		<script src="https://login.persona.org/include.js"></script>
 		<script src="${view.request.static_url('miniblog:static/jquery.js')}"></script>
@@ -258,7 +258,7 @@
 			-->
 		</div>
 		<div id="copyright">
-				&copy; ${view.request.registry.settings["title"]} | Design by <a href="http://www.freecsstemplates.org/">FCT</a> | Powered By <a href="https://github.com/Javex/miniblog">miniblog</a>
+				&copy; ${view.request.registry.settings["title"]} | Design by <a href="https://www.freecsstemplates.org/">FCT</a> | Powered By <a href="https://github.com/Javex/miniblog">miniblog</a>
 		</div>
 	</body>
 </html>
