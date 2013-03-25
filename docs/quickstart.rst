@@ -287,8 +287,15 @@ possibilities of its underlying libraries, especially :mod:`dogpile.cache` and
 :mod:`sqlalchemy`.
 
 Finally, you might want to create the about page: On this page you can talk a
-bit about yourself and why this blog exists & what it's about. For this, open
-``miniblog/templates/about.mako`` and edit the ``body`` block:
+bit about yourself and why this blog exists & what it's about. For this, copy
+the sample file:
+
+.. code-block:: console
+
+    $ cd miniblog/templates
+    $ cp about.mako.sample about.mako
+
+Now oben the file and edit the ``body`` block:
 
 .. code-block:: html
 
