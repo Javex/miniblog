@@ -1,5 +1,5 @@
-from wtforms import Form, TextField, TextAreaField, validators, SelectField
-from wtforms.fields.simple import SubmitField
+from wtforms import Form, TextField, TextAreaField, validators, SelectField, \
+    SubmitField
 
 
 class EntryForm(Form):

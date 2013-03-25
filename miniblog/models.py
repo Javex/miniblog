@@ -1,24 +1,24 @@
 from datetime import datetime
+from dogpile.cache import make_region
+from functools import wraps
 from hashlib import sha512
 from pyramid.interfaces import ISession
 from pyramid.security import Allow, Everyone
 from sqlalchemy import Column, Integer, Text, DateTime, PickleType
 from sqlalchemy.event import listen
-from sqlalchemy.ext.mutable import Mutable
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import Session as SASession
-from sqlalchemy.orm import scoped_session, sessionmaker, relationship
+from sqlalchemy.ext.mutable import Mutable
+from sqlalchemy.orm import Session as SASession, scoped_session, sessionmaker, \
+    relationship
 from sqlalchemy.orm.exc import NoResultFound, DetachedInstanceError
 from sqlalchemy.schema import ForeignKey
+from sqlalchemy.sql.expression import desc
 from time import time
 from zope.interface import implements
 from zope.sqlalchemy import ZopeTransactionExtension
 import hmac
 import logging
 import os
-from functools import wraps
-from sqlalchemy.sql.expression import desc
-from dogpile.cache import make_region
 import re
 
 
@@ -28,7 +28,7 @@ Base = declarative_base()
 cache = make_region()
 
 
-def pretty_date(time=False):
+def pretty_date(time=None):
     """
     Get a datetime object or a int() Epoch timestamp and return a
     pretty string like 'an hour ago', 'Yesterday', '3 months ago',
@@ -36,17 +36,19 @@ def pretty_date(time=False):
     """
     from datetime import datetime
     now = datetime.now()
-    if type(time) is int:
-        diff = now - datetime.fromtimestamp(time)
-    elif isinstance(time, datetime):
-        diff = now - time
-    elif not time:
-        diff = now - now
+    if time is None:
+        time = datetime.now()
+    try:
+        time = datetime.fromtimestamp(time)
+    except TypeError:
+        if not isinstance(time, datetime):
+            raise TypeError("Can only handle datetime or Epoch timestamp.")
+    diff = now - time
     second_diff = diff.seconds
     day_diff = diff.days
 
     if day_diff < 0:
-        return ''
+        raise ValueError("time parameter must be before now(), not after.")
 
     if day_diff == 0:
         if second_diff < 10:
@@ -65,11 +67,19 @@ def pretty_date(time=False):
         return "Yesterday"
     if day_diff < 7:
         return str(day_diff) + " days ago"
-    if day_diff < 31:
-        return str(day_diff / 7) + " weeks ago"
-    if day_diff < 365:
-        return str(day_diff / 30) + " months ago"
-    return str(day_diff / 365) + " years ago"
+    if day_diff < 14:
+        return "a week ago"
+    if now.year == time.year:
+        if now.month == time.month:
+            return "{0} weeks ago".format(day_diff / 7)
+        if now.month - time.month == 1:
+            return "a month ago"
+        else:
+            return "{0} months ago".format(now.month - time.month)
+    elif now.year - time.year == 1:
+        return "a year ago"
+    else:
+        return "{0} years ago".format(now.year - time.year)
 
 
 @cache.cache_on_arguments()
@@ -125,10 +135,10 @@ class Entry(Base):
     category_name = Column(Text, ForeignKey('category.name'))
     category = relationship('Category', backref='entries')
 
-    def __init__(self, title, text, category_id=None):
+    def __init__(self, title, text, category_name=None):
         self.title = title
         self.text = text
-        self.category_id = category_id
+        self.category_name = category_name
         self.entry_time = datetime.now()
 
     @property

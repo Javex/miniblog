@@ -3,6 +3,7 @@ MANIFEST.in
 README.md
 development.ini
 production.ini
+requirements.txt
 setup.cfg
 setup.py
 miniblog/__init__.py
@@ -31,6 +32,7 @@ miniblog/static/pyramid.png
 miniblog/static/style.css
 miniblog/static/transparent.gif
 miniblog/static/images/Cross-32.png
+miniblog/static/images/Edit_32.png
 miniblog/static/images/pic1.jpg
 miniblog/static/images/plain_sign_in_black.png
 miniblog/static/images/red_asterisk.png
@@ -39,6 +41,7 @@ miniblog/templates/404.mako
 miniblog/templates/about.mako
 miniblog/templates/add.mako
 miniblog/templates/categories.mako
+miniblog/templates/edit_categories.mako
 miniblog/templates/entries.mako
 miniblog/templates/entry.mako
 miniblog/templates/index.html

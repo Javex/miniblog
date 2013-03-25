@@ -1,9 +1,9 @@
-from pyramid.config import Configurator
+from miniblog.models import DBSession, Base, userfinder, get_session, cache
 from pyramid.authentication import AuthTktAuthenticationPolicy
 from pyramid.authorization import ACLAuthorizationPolicy
+from pyramid.config import Configurator
 from sqlalchemy import engine_from_config
 
-from miniblog.models import DBSession, Base, userfinder, get_session, cache
 
 
 def main(global_config, **settings):
