@@ -17,10 +17,8 @@ disqus_shortname = my_username_at_disqus
 
 persona_verifier_url = https://verifier.login.persona.org/verify 
 
-dogpile.cache.backend = dogpile.cache.pylibmc
-dogpile.cache.arguments.url=127.0.0.1
-dogpile.cache.arguments.binary=True
-dogpile.cache.arguments.min_compress_len=524288
+dogpile.cache.backend = dogpile.cache.dbm
+dogpile.cache.arguments.filename = %(here)s/cache/cache.dbm
 
 
 pyramid.reload_templates = false

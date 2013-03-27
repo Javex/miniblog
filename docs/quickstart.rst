@@ -111,7 +111,7 @@ the application in ``env``.
     $ virtualenv env
     $ . env/bin/activate
     $ python setup.py develop
-    $ cp production.ini.sample production.ini
+    $ cp samples/production.ini.sample production.ini
 
 This creates your application with a sample configuration. Don't worry about
 the ``develop`` setup; we use it to install dependencies but keep our
