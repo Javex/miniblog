@@ -44,6 +44,5 @@ miniblog/templates/categories.mako
 miniblog/templates/edit_categories.mako
 miniblog/templates/entries.mako
 miniblog/templates/entry.mako
-miniblog/templates/index.html
 miniblog/templates/layout.mako
 miniblog/templates/search.mako

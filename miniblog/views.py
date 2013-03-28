@@ -213,12 +213,14 @@ class AdminView(BaseView):
                 if "category" in form.data and form.data["category"]:
                     category = DBSession.query(Category)\
                         .filter(Category.name == form.data["category"]).one()
+                else:
+                    category = None
                 if not entry:
-                    new_entry = Entry(form.data["title"], form.data["text"])
-                    new_entry.category = category
+                    entry = Entry(form.data["title"], form.data["text"])
+                    entry.category = category
                     if "add_entry_form" in self.request.session:
                         del self.request.session["add_entry_form"]
-                    DBSession.add(new_entry)
+                    DBSession.add(entry)
                 else:
                     if "edit_entry_%i_form" \
                             % entry.id in self.request.session:
